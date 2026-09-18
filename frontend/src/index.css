@@ -1,0 +1,151 @@
+:root {
+  /* Nordic Minimal Theme */
+  --primary: #6366F1; /* Indigo */
+  --primary-glow: rgba(99, 102, 241, 0.2);
+  --bg-color: #F9FAFB; /* Off-white / light gray */
+  --surface-color: #FFFFFF; /* Pure white cards */
+  --text-main: #1F2937; /* Charcoal */
+  --text-muted: #6B7280; /* Gray 500 */
+  --glass-border: rgba(0, 0, 0, 0.05);
+  
+  --expense: #DC2626; /* Danger Red */
+  --expense-bg: rgba(220, 38, 38, 0.1);
+  --income: #059669; /* Success Emerald */
+  --income-bg: rgba(5, 150, 105, 0.1);
+  --warning: #F59E0B; /* Orange */
+  
+  --card-border: 1px solid rgba(0, 0, 0, 0.05);
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1, h2, h3, h4 {
+  margin: 0;
+  font-weight: 600;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+}
+
+h1, h2, h3, .serif {
+  /* Switching to Inter/sans for a true minimal look, but retaining class for backwards compatibility */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.italic {
+  font-style: italic;
+}
+
+.glass-panel {
+  background: var(--surface-color);
+  border: var(--card-border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--card-shadow);
+}
+
+.transaction-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.transaction-card:last-child {
+  border-bottom: none;
+}
+
+.transaction-card:hover {
+  background: #F3F4F6;
+  transform: translateX(4px);
+  border-radius: 8px;
+  padding-left: 8px;
+  padding-right: 8px;
+  margin-left: -8px;
+  margin-right: -8px;
+}
+
+input, button, select {
+  font-family: inherit;
+  outline: none;
+  border: none;
+}
+
+input {
+  color: var(--text-main) !important;
+}
+input::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 1;
+}
+
+button {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  opacity: 0.8;
+}
+
+/* Animations */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes highlightNew {
+  0% {
+    background: var(--primary-glow);
+    transform: scale(1.02);
+  }
+  100% {
+    background: transparent;
+    transform: scale(1);
+  }
+}
+
+.animate-new-item {
+  animation: 
+    slideDown 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards,
+    newTransactionGlow 2.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.2);
+}
