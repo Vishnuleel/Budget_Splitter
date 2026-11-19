@@ -15,13 +15,13 @@
 ![Cloudflare Pages](https://img.shields.io/badge/Cloudflare_Pages-f38020?style=for-the-badge&logo=cloudflare&logoColor=white)
 ![PWA](https://img.shields.io/badge/Installable_PWA-4a6c96?style=for-the-badge&logo=pwa&logoColor=white)
 
-[Features](#-features) · [Screenshots](#-screenshots) · [How it works](#-how-it-works) · [Tech](#-tech-stack) · [Run it](#-run-it-locally)
+[Features](#features) · [Screenshots](#screenshots) · [How it works](#how-it-works) · [Tech](#tech-stack) · [Run it](#run-it-locally)
 
 </div>
 
 <br />
 
-## ✨ Why I built it
+## Why I built it
 
 Grocery runs with roommates always ended in the same argument: *"I don't eat mushrooms, why am I paying for them?"* Splitting the total equally is unfair, and splitting by hand is tedious.
 
@@ -29,7 +29,7 @@ Budget Splitter reads the receipt, lets everyone tick only what's theirs, and se
 
 <br />
 
-## 📱 Screenshots
+## Screenshots
 
 <div align="center">
 <table>
@@ -48,47 +48,47 @@ Budget Splitter reads the receipt, lets everyone tick only what's theirs, and se
 
 <br />
 
-## 🌟 Features
+## Features
 
-### 🧾 Split receipts item by item
+### Split receipts item by item
 - **Scan, paste or type** a receipt. Gemini vision reads photos, and Swedish receipt text (ICA, Willys, Lidl, Coop) is parsed on the device.
 - **Scan several receipts at once**, then merge them into **one bill** or go through them as **separate bills**.
 - An **items × people grid** shows every share live. Tap a name to add or remove that person on every item.
 - **Fair to the öre:** uneven splits ("2 of 3 packs"), discounts follow what each person bought, bags are shared only by people who bought something, and bottle deposits follow their drink. Totals always match the receipt.
 
-### 🤝 Shared bills between accounts
+### Shared bills between accounts
 - **Connect by email.** Friend requests are accepted in the app.
 - **Send a bill into a friend's app.** They review it, untick anything that isn't theirs, and accept or decline.
 - **The payer approves every change**, with a before-and-after for everyone it affects, so nobody can quietly lower their own share.
 - **Paid takes both sides:** "I've paid" only counts once the payer confirms it.
 - Friends without an account still get a WhatsApp-ready message or a tick-your-items link.
 
-### 🇸🇪 Built for life abroad
+### Built for life abroad
 - **Multi-currency:** totals are shown in SEK, every payment keeps its own currency, and live ECB exchange rates are used.
 - **Bank SMS log themselves:** an iPhone Shortcut or Android automation sends each SMS to the app, which picks out the foreign amount, the merchant and the card fees.
 - A **forex insight** shows what your Indian card's markup really cost you this month.
 - **Swedish merchants are recognised automatically**, from ICA to SL to Systembolaget.
 
-### 📊 Everyday money
+### Everyday money
 - One-tap category review, merchant rules, budgets with per-category caps, and a budget-pace chart.
 - Bills and subscriptions, savings goals, fixed deposits, debts, and net worth.
 
-### 👥 Accounts & privacy
+### Accounts & privacy
 - Invite-only accounts, with an **admin portal** to add, pause and reset people.
 - **Row Level Security:** everyone sees only their own data, and the admin never sees amounts.
 - An optional per-device PIN lock and a hide-balances mode.
 
-### 🎨 Design
+### Design
 - **"Sorbet Nord":** puffy pastel clay shapes on Nord frost blues, in matching **light and dark** themes (choose Auto, Light or Dark).
 - Spring physics throughout: squishy presses, drag-to-dismiss sheets and number roll-ups, and all of it respects *reduce motion*.
 
 <br />
 
-## 🔄 How it works
+## How it works
 
 ```mermaid
 flowchart LR
-    A[📷 Receipt photo<br/>or text] --> B[Items read<br/>Gemini · on-device parser]
+    A[Receipt photo<br/>or text] --> B[Items read<br/>Gemini · on-device parser]
     B --> C[Grid: who had what]
     C --> D{Friend has<br/>the app?}
     D -- yes --> E[Bill lands in<br/>their app]
@@ -102,7 +102,7 @@ All sharing goes through one server endpoint (`/api/shared`) that enforces the r
 
 <br />
 
-## 🛠 Tech stack
+## Tech stack
 
 | Layer | Tools |
 |---|---|
@@ -115,7 +115,7 @@ All sharing goes through one server endpoint (`/api/shared`) that enforces the r
 
 <br />
 
-## 🚀 Run it locally
+## Run it locally
 
 **Just want to look around?** Demo mode needs no database. It loads two months of sample data and pretend roommates who answer your bills.
 
@@ -171,7 +171,7 @@ docs/                   setup guides, screenshots
 
 <br />
 
-## 🔒 Security
+## Security
 
 - **Sign-in** uses Supabase Auth, and **data access** is limited by Row Level Security on every table.
 - **The service-role key stays on the server** (Cloudflare encrypted variables) and never ships in the app.
@@ -183,7 +183,7 @@ Details: [supabase/SECURITY.md](supabase/SECURITY.md).
 
 <div align="center">
 
-Made in Sweden 🇸🇪 with a little help from 🇮🇳
+Made in Sweden, with an Indian bank card
 
 <sub>Personal project · built for portfolio demonstration</sub>
 

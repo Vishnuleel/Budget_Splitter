@@ -10,7 +10,7 @@ import { getSetting, useSetting } from '../lib/settings';
 import { CATEGORY_META, categoryMeta, effectiveCategory, isExpense } from '../lib/categories';
 import { daysInMonth, daysUntil, inMonth, monthLabel, pct } from '../lib/format';
 import type { Subscription, Transaction } from '../lib/types';
-import { money, moneyCompact, amt, CURRENCY_CODES } from '../lib/money';
+import { money, moneyCompact, amt, CURRENCY_CODES, displayCurrency } from '../lib/money';
 
 function monthStats(transactions: Transaction[], y: number, m: number) {
   const days = daysInMonth(y, m);
@@ -48,6 +48,14 @@ function ChartTip({ active, payload, label }: { active?: boolean; payload?: { va
       {day && day.value > 0 && <div style={{ opacity: 0.8 }}>{money(day.value)} that day</div>}
     </div>
   );
+}
+
+
+/** Short y-axis labels that always fit: "8 tkr" rather than "8 000 kr". */
+function axisTick(v: number) {
+  const cur = displayCurrency().toUpperCase();
+  if (Math.abs(v) >= 1000 && ['SEK', 'NOK', 'DKK'].includes(cur)) return `${String(Math.round(v / 100) / 10).replace('.', ',')} tkr`;
+  return moneyCompact(v);
 }
 
 export default function InsightsPage({ hidden }: { hidden: boolean }) {
@@ -211,7 +219,7 @@ export default function InsightsPage({ hidden }: { hidden: boolean }) {
               </defs>
               <CartesianGrid vertical={false} stroke="var(--line)" />
               <XAxis dataKey="d" tickLine={false} axisLine={false} tick={{ fill: 'var(--ink-3)', fontSize: 11, fontWeight: 700 }} interval={Math.ceil(days / 6) - 1} />
-              <YAxis tickLine={false} axisLine={false} width={46} tick={{ fill: 'var(--ink-3)', fontSize: 11, fontWeight: 700 }} tickFormatter={v => moneyCompact(v)} />
+              <YAxis tickLine={false} axisLine={false} width={52} tick={{ fill: 'var(--ink-3)', fontSize: 11, fontWeight: 700 }} tickFormatter={axisTick} />
               <Tooltip content={<ChartTip />} cursor={{ stroke: 'var(--line-strong)' }} />
               {budget > 0 && <Line type="linear" dataKey="pace" stroke="var(--marigold)" strokeDasharray="5 5" strokeWidth={2} dot={false} isAnimationActive={false} />}
               <Area type="monotone" dataKey="cum" stroke="var(--jade)" strokeWidth={3} fill="url(#cumFill)" connectNulls={false} animationDuration={900} />
