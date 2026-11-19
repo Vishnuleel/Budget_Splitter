@@ -1,0 +1,9 @@
+# Cloudflare Pages config. Pages project root = this `frontend` folder.
+# Build command: npm run build   ·   Output directory: dist
+# Secrets (SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY, VITE_*) go in the Pages dashboard,
+# or in a local .dev.vars file for `npm run cf:dev` — never in this file.
+name = "budget-splitter"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-11-01"
+# shared/ingest.js uses node:crypto (hashing personal SMS keys).
+compatibility_flags = ["nodejs_compat"]

@@ -1,106 +1,216 @@
-import React from 'react';
-import type { Transaction } from '../App';
-import Dashboard from '../components/Dashboard';
+import { useMemo } from 'react';
+import { motion } from 'motion/react';
+import {
+  Minus, Plus, MessageSquareText, Split, Target, CalendarClock, Landmark, Download,
+  Sparkles, ChevronRight, Bell, type LucideIcon,
+} from 'lucide-react';
+import BalanceCard from '../components/BalanceCard';
+import TransactionRow from '../components/TransactionRow';
+import { Ring, SectionHead, rise, stagger } from '../components/ui/primitives';
+import { useData } from '../store/DataContext';
+import { useUI } from '../store/UIContext';
+import { useSetting } from '../lib/settings';
+import { isExpense, needsReview } from '../lib/categories';
+import { daysInMonth, daysUntil, inMonth } from '../lib/format';
+import { exportCsv } from '../lib/csv';
+import { balances } from '../lib/splits';
+import { useShared } from '../lib/sharedApi';
+import { saveMerchantRule } from '../components/sheets/TxSheet';
+import { money, moneyCompact, amt } from '../lib/money';
 
-interface HomePageProps {
-  transactions: Transaction[];
-  onNavigate: (tab: 'home' | 'expenses' | 'savings') => void;
-}
+type Action = { label: string; icon: LucideIcon; color: string; onClick: () => void };
 
-const HomePage: React.FC<HomePageProps> = ({ transactions, onNavigate }) => {
-  const recentTransactions = transactions.slice(0, 3);
-  
-  // Calculate current month's expenses
+export default function HomePage({ hidden, onToggleHidden }: { hidden: boolean; onToggleHidden: () => void }) {
+  const { transactions, accounts, deposits, debts, subscriptions, freshIds, update, removeTransactionWithUndo, markSubscriptionPaid } = useData();
+  const { openSheet, setTab, setActivityFilter } = useUI();
+  const [budget] = useSetting('monthlyBudget');
+  const [splits] = useSetting('splits');
+
   const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  
-  const monthlyExpenses = transactions
-    .filter(t => {
-      const d = new Date(t.date);
-      return t.category !== 'Income' && t.category !== 'Savings' && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-    })
-    .reduce((sum, t) => sum + t.amount, 0);
+  const y = now.getFullYear();
+  const m = now.getMonth();
 
-  const budget = 40000;
-  const budgetSpentPercent = Math.min(100, (monthlyExpenses / budget) * 100);
-  const isOverBudget = monthlyExpenses > budget;
+  const { spent, income } = useMemo(() => {
+    let s = 0, inc = 0;
+    for (const t of transactions) {
+      if (!inMonth(t.date, y, m)) continue;
+      if (t.category === 'Income') inc += amt(t);
+      else if (isExpense(t)) s += amt(t);
+    }
+    return { spent: s, income: inc };
+  }, [transactions, y, m]);
+
+  const netWorth =
+    accounts.reduce((a, x) => a + amt({ amount: x.balance, currency: x.currency }), 0) +
+    deposits.reduce((a, x) => a + amt(x), 0) -
+    debts.reduce((a, x) => a + amt(x), 0);
+
+  const reviewCount = transactions.filter(needsReview).length;
+  const daysLeft = daysInMonth(y, m) - now.getDate() + 1;
+  const remaining = budget - spent;
+  const perDay = remaining > 0 ? remaining / daysLeft : 0;
+  const used = budget > 0 ? spent / budget : 0;
+  const ringColor = used > 1 ? 'var(--rose)' : used > 0.8 ? 'var(--marigold)' : 'var(--jade)';
+
+  const shared = useShared();
+  const owedToMe = useMemo(() => {
+    let v = 0;
+    balances(splits.people, splits.entries).forEach(b => { v += b; });
+    shared.balances.forEach(b => { v += b; });
+    return v;
+  }, [splits, shared.balances]);
+
+  const upcoming = subscriptions.filter(s => s.next_due_date).slice(0, 4);
+
+  const actions: Action[] = [
+    { label: 'Add expense', icon: Minus, color: '#c8402f', onClick: () => openSheet({ kind: 'add', mode: 'expense' }) },
+    { label: 'Add income', icon: Plus, color: '#0b8457', onClick: () => openSheet({ kind: 'add', mode: 'income' }) },
+    { label: 'Paste SMS', icon: MessageSquareText, color: '#2f6fd6', onClick: () => openSheet({ kind: 'sms' }) },
+    { label: 'Split bill', icon: Split, color: '#c2417f', onClick: () => openSheet({ kind: 'splits' }) },
+    { label: 'Budgets', icon: Target, color: '#d4900f', onClick: () => openSheet({ kind: 'budgets' }) },
+    { label: 'Bills', icon: CalendarClock, color: '#8e5cd9', onClick: () => setTab('insights') },
+    { label: 'Wealth', icon: Landmark, color: '#0e7c66', onClick: () => setTab('wealth') },
+    { label: 'Export', icon: Download, color: '#64748b', onClick: () => exportCsv(transactions) },
+  ];
 
   return (
-    <div className="animate-slide-down">
-      <Dashboard transactions={transactions} />
+    <motion.div className="page" variants={stagger} initial="hidden" animate="show">
+      <BalanceCard netWorth={netWorth} spent={spent} income={income} hidden={hidden} onToggleHidden={onToggleHidden} onOpenWealth={() => setTab('wealth')} />
 
-      {/* Budget Health Ring */}
-      <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '16px' }}>
-        <div style={{ position: 'relative', width: '80px', height: '80px' }}>
-          <svg width="80" height="80" viewBox="0 0 100 100">
-            {/* Background ring */}
-            <circle cx="50" cy="50" r="40" fill="transparent" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
-            {/* Progress ring */}
-            <circle 
-              cx="50" cy="50" r="40" 
-              fill="transparent" 
-              stroke={isOverBudget ? 'var(--expense)' : 'url(#goldGradientHealth)'} 
-              strokeWidth="8"
-              strokeDasharray="251.2"
-              strokeDashoffset={251.2 - (251.2 * budgetSpentPercent) / 100}
-              strokeLinecap="round"
-              style={{ transition: 'stroke-dashoffset 1s ease-out', transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}
-            />
-            <defs>
-              <linearGradient id="goldGradientHealth" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#d4af37" />
-                <stop offset="100%" stopColor="#f3e5ab" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1rem', color: '#f8fafc' }}>
-            {Math.round(budgetSpentPercent)}%
+      <motion.div variants={rise} className="quick-grid" role="list">
+        {actions.map((a, i) => (
+          <motion.button
+            key={a.label}
+            type="button"
+            role="listitem"
+            className="quick"
+            onClick={a.onClick}
+            initial={{ opacity: 0, y: 12, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ delay: 0.12 + i * 0.035, type: 'spring', stiffness: 380, damping: 24 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <motion.span className="quick-icon" whileHover={{ y: -2 }}>
+              <a.icon size={21} strokeWidth={2.1} />
+            </motion.span>
+            {a.label}
+          </motion.button>
+        ))}
+      </motion.div>
+
+      {shared.todo.length > 0 && (
+        <motion.button variants={rise} type="button" className="card row" style={{ background: 'var(--jade-soft)', textAlign: 'left', width: '100%' }}
+          onClick={() => (shared.todo.length === 1 ? openSheet({ kind: 'shared', id: shared.todo[0].bill.id }) : openSheet({ kind: 'splits' }))} whileTap={{ scale: 0.98 }}>
+          <span className="tile" style={{ width: 36, height: 36, background: 'var(--jade)', color: 'var(--on-primary)' }}><Bell size={18} /></span>
+          <div className="grow">
+            <div style={{ fontWeight: 800 }}>{shared.todo.length === 1 ? 'A shared bill needs you' : `${shared.todo.length} shared bills need you`}</div>
+            <div className="faint" style={{ fontSize: '0.8rem', fontWeight: 600 }}>Review, approve a change, or confirm a payment</div>
+          </div>
+          <ChevronRight size={20} className="faint" />
+        </motion.button>
+      )}
+
+      {reviewCount > 0 && (
+        <motion.button
+          variants={rise}
+          type="button"
+          className="card row"
+          style={{ background: 'var(--marigold-soft)', borderColor: 'transparent', textAlign: 'left', width: '100%' }}
+          onClick={() => { setActivityFilter('review'); setTab('activity'); }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <motion.span animate={{ rotate: [0, 14, -10, 0] }} transition={{ repeat: Infinity, repeatDelay: 2.5, duration: 0.6 }}
+            className="tile" style={{ width: 36, height: 36, background: 'var(--marigold)', color: 'var(--on-brand)' }}>
+            <Sparkles size={18} />
+          </motion.span>
+          <div className="grow">
+            <div style={{ fontWeight: 800, color: 'var(--marigold-ink)' }}>{reviewCount} payment{reviewCount > 1 ? 's' : ''} need a category</div>
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--marigold-ink)', opacity: 0.85 }}>One tap each — we’ll learn the merchant.</div>
+          </div>
+          <ChevronRight size={20} color="var(--marigold-ink)" />
+        </motion.button>
+      )}
+
+      <motion.section variants={rise} className="card row" style={{ gap: 18 }} aria-label="Monthly budget">
+        <Ring value={used} size={76} stroke={8} color={ringColor}>
+          <div>
+            <div className="display num" style={{ fontSize: '1.05rem' }}>{Math.round(used * 100)}%</div>
+            <div className="faint" style={{ fontSize: '0.65rem', fontWeight: 800 }}>USED</div>
+          </div>
+        </Ring>
+        <div className="grow">
+          <div className="faint" style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.04em' }}>
+            {now.toLocaleDateString('en-IN', { month: 'long' }).toUpperCase()} BUDGET
+          </div>
+          <div className={`display num${hidden ? ' blurred' : ''}`} style={{ fontSize: '1.15rem', marginTop: 2 }}>
+            {money(spent)} <span className="faint" style={{ fontSize: '0.95rem', fontWeight: 600 }}>of {moneyCompact(budget)}</span>
+          </div>
+          <div style={{ fontSize: '0.82rem', fontWeight: 700, marginTop: 6, color: remaining < 0 ? 'var(--rose)' : 'var(--ink-2)' }}>
+            {remaining < 0
+              ? `Over by ${money(-remaining)} — ease up this week`
+              : `${money(perDay)}/day left for ${daysLeft} day${daysLeft > 1 ? 's' : ''}`}
           </div>
         </div>
-        <div>
-          <h3 className="serif" style={{ fontSize: '1.2rem', color: '#f8f9fa', marginBottom: '4px' }}>Monthly Budget</h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            ₹{monthlyExpenses.toLocaleString()} / ₹{budget.toLocaleString()}
-          </p>
-          {isOverBudget && <p style={{ fontSize: '0.75rem', color: 'var(--expense)', marginTop: '4px' }}>Over budget!</p>}
-        </div>
-      </div>
+      </motion.section>
 
-      {/* Quick Actions Placeholder */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
-        <button style={{ flex: 1, background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.3)', padding: '16px', borderRadius: '16px', color: '#d4af37' }}>+ Income</button>
-        <button style={{ flex: 1, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '16px', borderRadius: '16px', color: '#ef4444' }}>- Expense</button>
-      </div>
+      {Math.abs(owedToMe) > 0.5 && (
+        <motion.button variants={rise} type="button" className="card row" style={{ width: '100%', textAlign: 'left' }} onClick={() => openSheet({ kind: 'splits' })} whileTap={{ scale: 0.98 }}>
+          <span className="tile" style={{ width: 42, height: 42, background: '#c2417f1f', color: '#c2417f' }}><Split size={20} /></span>
+          <div className="grow">
+            <div style={{ fontWeight: 800 }}>{owedToMe > 0 ? 'Friends owe you' : 'You owe friends'}</div>
+            <div className="faint" style={{ fontSize: '0.8rem', fontWeight: 600 }}>Tap to settle up</div>
+          </div>
+          <div className="display num" style={{ fontSize: '1.15rem', color: owedToMe > 0 ? 'var(--income)' : 'var(--rose)' }}>{money(Math.abs(owedToMe))}</div>
+        </motion.button>
+      )}
 
-      {/* Recent Activity Glimpse */}
-      <div className="glass-panel">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 className="serif" style={{ fontSize: '1.25rem', color: '#f8f9fa' }}>Recent Activity</h2>
-          <button 
-            onClick={() => onNavigate('expenses')}
-            style={{ background: 'transparent', color: 'var(--primary)', border: 'none', padding: 0, fontSize: '0.9rem' }}
-          >
-            View All
-          </button>
-        </div>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {recentTransactions.map(tx => (
-            <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px' }}>
-              <div>
-                <div style={{ fontWeight: 600, color: '#f8fafc' }}>{tx.merchant}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{tx.category}</div>
-              </div>
-              <div style={{ color: tx.category === 'Income' ? 'var(--income)' : '#f8fafc', fontWeight: 600 }}>
-                {tx.category === 'Income' ? '+' : '-'}₹{tx.amount}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+      {upcoming.length > 0 && (
+        <motion.section variants={rise}>
+          <SectionHead title="Coming up" action={<button className="link-btn" onClick={() => setTab('insights')}>All bills</button>} />
+          <div className="scroller">
+            {upcoming.map(s => {
+              const d = daysUntil(s.next_due_date);
+              const tone = d == null ? 'neutral' : d < 0 ? 'bad' : d <= 3 ? 'warn' : 'good';
+              return (
+                <motion.div key={s.id} className="card card-tight" style={{ width: 150 }} whileHover={{ y: -3 }}>
+                  <div className="row" style={{ justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: 800 }} className="ellipsis">{s.name}</span>
+                  </div>
+                  <div className="display num" style={{ fontSize: '1.05rem', margin: '4px 0' }}>{money(s.amount, { currency: s.currency ?? 'INR' })}</div>
+                  <span className={`badge ${tone}`}>
+                    {d == null ? s.cycle : d < 0 ? `${-d}d overdue` : d === 0 ? 'Due today' : `In ${d} day${d > 1 ? 's' : ''}`}
+                  </span>
+                  <motion.button type="button" className="btn btn-sm btn-ghost btn-block" style={{ marginTop: 10 }} whileTap={{ scale: 0.95 }}
+                    onClick={() => markSubscriptionPaid(s, true)}>
+                    Mark paid
+                  </motion.button>
+                </motion.div>
+              );
+            })}
+          </div>
+        </motion.section>
+      )}
+
+      <motion.section variants={rise}>
+        <SectionHead title="Recent activity" action={<button className="link-btn" onClick={() => { setActivityFilter('all'); setTab('activity'); }}>See all</button>} />
+        {transactions.length === 0 ? (
+          <div className="empty">No transactions yet. Tap + to add your first one, or paste a bank SMS.</div>
+        ) : (
+          <div className="tx-list">
+            {transactions.slice(0, 5).map(tx => (
+              <TransactionRow
+                key={tx.id}
+                tx={tx}
+                fresh={freshIds.has(tx.id)}
+                hidden={hidden}
+                onOpen={() => openSheet({ kind: 'tx', id: tx.id })}
+                onDelete={() => removeTransactionWithUndo(tx)}
+                onAccept={c => { update('transactions', tx.id, { category: c }); saveMerchantRule(tx.merchant, c); }}
+              />
+            ))}
+          </div>
+        )}
+      </motion.section>
+    </motion.div>
   );
-};
-
-export default HomePage;
+}

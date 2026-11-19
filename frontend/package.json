@@ -7,12 +7,21 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:sms": "node scripts/test-ingest.mjs",
+    "cf:dev": "npm run build && wrangler pages dev",
+    "cf:deploy": "npm run build && wrangler pages deploy",
+    "test:admin": "node scripts/test-admin.mjs",
+    "test": "node scripts/test-ingest.mjs && node scripts/test-admin.mjs && node scripts/test-bill.mjs && node scripts/test-share.mjs && node scripts/test-friends.mjs",
+    "test:friends": "node scripts/test-friends.mjs",
+    "test:bill": "node scripts/test-bill.mjs",
+    "test:share": "node scripts/test-share.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.15.0",
     "@supabase/supabase-js": "^2.111.0",
     "lucide-react": "^1.28.0",
+    "motion": "14.9.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "recharts": "^3.10.1"
@@ -24,6 +33,13 @@
     "@vitejs/plugin-react": "^6.0.3",
     "oxlint": "^1.71.0",
     "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "vite": "8.3.5",
+    "wrangler": "4.157.0"
+  },
+  "overrides": {
+    "postcss": "8.5.32",
+    "rolldown": "1.2.16",
+    "nanoid": "3.3.20",
+    "source-map-js": "1.2.2"
   }
 }
