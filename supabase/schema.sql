@@ -1,4 +1,4 @@
--- Budget Splitter — Supabase schema (multi-user, with an admin)
+-- Splitkvitto — Supabase schema (multi-user, with an admin)
 -- Run in Supabase → SQL Editor → New query. Safe to run again at any time.
 --
 -- Order for a new project (see docs/ACCOUNTS.md):

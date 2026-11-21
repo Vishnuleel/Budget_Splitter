@@ -38,10 +38,10 @@ export function CredentialsCard({ creds }: { creds: Credentials }) {
   const url = location.origin;
   const first = creds.name.split(' ')[0];
   const message = creds.invited
-    ? `Hi ${first}! I've invited you to Budget Splitter. Check ${creds.email} for the invite email, then open ${url} and add it to your home screen.`
+    ? `Hi ${first}! I've invited you to Splitkvitto. Check ${creds.email} for the invite email, then open ${url} and add it to your home screen.`
     : creds.reset
-      ? `Hi ${first}, here's a temporary password for Budget Splitter: ${creds.password}\nSign in at ${url} with ${creds.email}. You'll be asked to choose a new one.`
-      : `Hi ${first}! Your Budget Splitter account is ready.\nOpen: ${url}\nEmail: ${creds.email}\nTemporary password: ${creds.password}\nYou'll choose your own password when you first sign in, then add the app to your home screen (Settings → Use on your phone).`;
+      ? `Hi ${first}, here's a temporary password for Splitkvitto: ${creds.password}\nSign in at ${url} with ${creds.email}. You'll be asked to choose a new one.`
+      : `Hi ${first}! Your Splitkvitto account is ready.\nOpen: ${url}\nEmail: ${creds.email}\nTemporary password: ${creds.password}\nYou'll choose your own password when you first sign in, then add the app to your home screen (Settings → Use on your phone).`;
   const canShare = typeof navigator.share === 'function';
 
   const Line = ({ k, v, id }: { k: string; v: string; id: string }) => (

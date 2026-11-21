@@ -1,6 +1,6 @@
 # Accounts and the admin portal
 
-Budget Splitter is one app with separate accounts. Everyone signs in with their own email and password, and **each person only ever sees their own data**. The database enforces this with Row Level Security, so it doesn't depend on the app behaving.
+Splitkvitto is one app with separate accounts. Everyone signs in with their own email and password, and **each person only ever sees their own data**. The database enforces this with Row Level Security, so it doesn't depend on the app behaving.
 
 You (the admin) manage accounts at **`/admin`**: add people, reset passwords, pause, unlink phones, or delete. The portal shows activity counts, **never anyone's transactions or amounts**.
 

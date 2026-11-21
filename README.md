@@ -1,10 +1,12 @@
 <div align="center">
 
-<img src="docs/banner.svg" alt="Budget Splitter: split every receipt fairly, track every krona, settle up in one tap" width="100%" />
+<img src="docs/banner.svg" alt="Splitkvitto: split every receipt fairly, track every krona, settle up in one tap" width="100%" />
 
 <br />
 
 **A personal-finance PWA for an Indian living in Sweden, with fair, item-by-item bill splitting for roommates.**
+
+<sub><i>Kvitto</i> is Swedish for receipt.</sub>
 
 <br />
 
@@ -25,7 +27,7 @@
 
 Grocery runs with roommates always ended in the same argument: *"I don't eat mushrooms, why am I paying for them?"* Splitting the total equally is unfair, and splitting by hand is tedious.
 
-Budget Splitter reads the receipt, lets everyone tick only what's theirs, and sends each roommate their exact share straight into their own app. It's precise to the öre, including bag fees, coupons and bottle deposits. Around that sits a full finance tracker built for life abroad: an Indian bank card used in Sweden, money in two currencies, and bank SMS that log themselves.
+Splitkvitto reads the receipt, lets everyone tick only what's theirs, and sends each roommate their exact share straight into their own app. It's precise to the öre, including bag fees, coupons and bottle deposits. Around that sits a full finance tracker built for life abroad: an Indian bank card used in Sweden, money in two currencies, and bank SMS that log themselves.
 
 <br />
 

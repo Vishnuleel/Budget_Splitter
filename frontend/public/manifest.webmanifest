@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Budget Splitter",
-  "short_name": "Splitter",
-  "description": "Track card payments and bank transfers from your SMS, split bills with friends, and watch your net worth grow.",
+  "name": "Splitkvitto",
+  "short_name": "Splitkvitto",
+  "description": "Split receipts item by item with roommates, track spending in two currencies, and log bank SMS automatically.",
   "start_url": "/?source=homescreen",
   "scope": "/",
   "display": "standalone",

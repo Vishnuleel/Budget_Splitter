@@ -79,7 +79,7 @@ export function LoginScreen() {
   };
 
   const titles = {
-    password: ['Welcome back', 'Sign in to your Budget Splitter account.'],
+    password: ['Welcome back', 'Sign in to your Splitkvitto account.'],
     link: ['Sign in by email', 'We’ll email you a one-tap sign-in link.'],
     forgot: ['Reset your password', 'We’ll email you a link to choose a new one.'],
   } as const;

@@ -72,7 +72,7 @@ export default function AdminApp() {
   }, []);
 
   useEffect(() => { if (isAdmin) load(); }, [isAdmin, load]);
-  useEffect(() => { document.title = 'Admin · Budget Splitter'; return () => { document.title = 'Budget Splitter'; }; }, []);
+  useEffect(() => { document.title = 'Admin · Splitkvitto'; return () => { document.title = 'Splitkvitto'; }; }, []);
 
   const upsert = (u: AdminUser) => setUsers(list => (list.some(x => x.id === u.id) ? list.map(x => (x.id === u.id ? u : x)) : [...list, u]));
 
@@ -125,7 +125,7 @@ export default function AdminApp() {
         <div className="row" style={{ gap: 10 }}>
           <Logo size={30} />
           <div>
-            <div style={{ fontWeight: 800, fontSize: '0.95rem', lineHeight: 1.1 }}>Budget Splitter</div>
+            <div style={{ fontWeight: 800, fontSize: '0.95rem', lineHeight: 1.1 }}>Splitkvitto</div>
             <div className="faint" style={{ fontSize: '0.72rem', fontWeight: 700 }}>Admin portal{demo ? ' · demo' : ''}</div>
           </div>
         </div>

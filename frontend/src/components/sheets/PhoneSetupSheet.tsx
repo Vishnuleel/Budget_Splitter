@@ -99,7 +99,7 @@ function Body() {
           </>
         ) : canPrompt ? (
           <motion.button type="button" className="btn btn-primary btn-block" whileTap={{ scale: 0.97 }} onClick={() => promptInstall()}>
-            <Download size={16} /> Install Budget Splitter
+            <Download size={16} /> Install Splitkvitto
           </motion.button>
         ) : (
           <>

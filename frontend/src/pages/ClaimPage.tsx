@@ -20,7 +20,7 @@ export default function ClaimPage({ token }: { token: string }) {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    document.title = 'Pick your items · Budget Splitter';
+    document.title = 'Pick your items · Splitkvitto';
     viewShare(token).then(r => { setBill(r.bill); setAnswered(r.answered); }).catch(e => setError((e as Error).message));
   }, [token]);
 
@@ -59,7 +59,7 @@ export default function ClaimPage({ token }: { token: string }) {
     <div className="claim">
       <header className="row" style={{ gap: 10, padding: 'calc(16px + env(safe-area-inset-top)) 0 8px' }}>
         <Logo size={30} />
-        <span style={{ fontWeight: 800 }}>Budget Splitter</span>
+        <span style={{ fontWeight: 800 }}>Splitkvitto</span>
       </header>
 
       {error ? (

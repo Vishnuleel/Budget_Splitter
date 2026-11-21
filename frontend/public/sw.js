@@ -1,11 +1,11 @@
-/* Budget Splitter service worker — makes the home-screen app open instantly and work offline.
+/* Splitkvitto service worker — makes the home-screen app open instantly and work offline.
  * - App shell (index.html): network first, cached copy when offline.
  * - Built assets (/assets/*, hashed filenames): cache first.
  * - Google Fonts: stale-while-revalidate.
  * - Everything else (Supabase, /api, exchange rates): straight to the network, never cached,
  *   so you never see stale balances.
  */
-const VERSION = 'v2'; // bump to refresh cached icons/shell after a redesign
+const VERSION = 'v3'; // bump to refresh cached icons/shell after a redesign
 const SHELL = `shell-${VERSION}`;
 const ASSETS = `assets-${VERSION}`;
 const FONTS = `fonts-${VERSION}`;
