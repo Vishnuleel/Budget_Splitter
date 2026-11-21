@@ -25,7 +25,7 @@
 
 Grocery runs with roommates always ended in the same argument: *"I don't eat mushrooms, why am I paying for them?"* Splitting the total equally is unfair, and splitting by hand is tedious.
 
-Budget Splitter reads the receipt, lets everyone tick only what's theirs, and sends each roommate their exact share **straight into their own app**. It's precise to the öre, including bag fees, coupons and bottle deposits. Around that sits a full finance tracker built for life abroad: an Indian bank card used in Sweden, money in two currencies, and bank SMS that log themselves.
+Budget Splitter reads the receipt, lets everyone tick only what's theirs, and sends each roommate their exact share straight into their own app. It's precise to the öre, including bag fees, coupons and bottle deposits. Around that sits a full finance tracker built for life abroad: an Indian bank card used in Sweden, money in two currencies, and bank SMS that log themselves.
 
 <br />
 
@@ -52,7 +52,7 @@ Budget Splitter reads the receipt, lets everyone tick only what's theirs, and se
 
 ### Split receipts item by item
 - **Scan, paste or type** a receipt. Gemini vision reads photos, and Swedish receipt text (ICA, Willys, Lidl, Coop) is parsed on the device.
-- **Scan several receipts at once**, then merge them into **one bill** or go through them as **separate bills**.
+- **Scan several receipts at once**, then merge them into one bill or go through them as separate bills.
 - An **items × people grid** shows every share live. Tap a name to add or remove that person on every item.
 - **Fair to the öre:** uneven splits ("2 of 3 packs"), discounts follow what each person bought, bags are shared only by people who bought something, and bottle deposits follow their drink. Totals always match the receipt.
 
@@ -66,7 +66,7 @@ Budget Splitter reads the receipt, lets everyone tick only what's theirs, and se
 ### Built for life abroad
 - **Multi-currency:** totals are shown in SEK, every payment keeps its own currency, and live ECB exchange rates are used.
 - **Bank SMS log themselves:** an iPhone Shortcut or Android automation sends each SMS to the app, which picks out the foreign amount, the merchant and the card fees.
-- A **forex insight** shows what your Indian card's markup really cost you this month.
+- **Forex insight:** shows what your Indian card's markup cost you this month.
 - **Swedish merchants are recognised automatically**, from ICA to SL to Systembolaget.
 
 ### Everyday money
@@ -74,12 +74,12 @@ Budget Splitter reads the receipt, lets everyone tick only what's theirs, and se
 - Bills and subscriptions, savings goals, fixed deposits, debts, and net worth.
 
 ### Accounts & privacy
-- Invite-only accounts, with an **admin portal** to add, pause and reset people.
+- Invite-only accounts, with an admin portal to add, pause and reset people.
 - **Row Level Security:** everyone sees only their own data, and the admin never sees amounts.
 - An optional per-device PIN lock and a hide-balances mode.
 
 ### Design
-- **"Sorbet Nord":** puffy pastel clay shapes on Nord frost blues, in matching **light and dark** themes (choose Auto, Light or Dark).
+- **"Sorbet Nord":** puffy pastel clay shapes on Nord frost blues, in matching light and dark themes (choose Auto, Light or Dark).
 - Spring physics throughout: squishy presses, drag-to-dismiss sheets and number roll-ups, and all of it respects *reduce motion*.
 
 <br />
@@ -117,7 +117,7 @@ All sharing goes through one server endpoint (`/api/shared`) that enforces the r
 
 ## Run it locally
 
-**Just want to look around?** Demo mode needs no database. It loads two months of sample data and pretend roommates who answer your bills.
+Demo mode needs no database. It loads two months of sample data and pretend roommates who answer your bills.
 
 ```bash
 cd frontend
@@ -125,7 +125,7 @@ npm install
 npm run dev
 ```
 
-Then open **http://localhost:5173/?demo=1**.
+Then open http://localhost:5173/?demo=1.
 
 <details>
 <summary><b>With your own Supabase project</b></summary>
@@ -173,7 +173,7 @@ docs/                   setup guides, screenshots
 
 ## Security
 
-- **Sign-in** uses Supabase Auth, and **data access** is limited by Row Level Security on every table.
+- **Sign-in** uses Supabase Auth, and Row Level Security on every table limits data access.
 - **The service-role key stays on the server** (Cloudflare encrypted variables) and never ships in the app.
 - **Only hashes are stored** for personal SMS keys and share links.
 
