@@ -111,7 +111,7 @@ All sharing goes through one server endpoint (`/api/shared`) that enforces the r
 | **App** | React 19 · TypeScript · Vite · Motion (springs, gestures) · Recharts · Lucide |
 | **Data & auth** | Supabase Postgres · Supabase Auth · Row Level Security · Realtime |
 | **Server** | Cloudflare Pages Functions (`frontend/functions/api/*`): SMS ingest, admin, receipt reading, share links, shared bills |
-| **AI** | Gemini 2.5 Flash for receipt photos and category suggestions |
+| **AI** | Gemini Flash for receipt photos and category suggestions |
 | **Phone** | Installable PWA with an offline service worker; iOS Shortcuts / Android MacroDroid for SMS |
 | **Tests** | 5 Node test suites (`npm test`): splitting maths, receipts, SMS pipeline, admin rules, shared bills |
 

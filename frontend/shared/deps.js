@@ -5,6 +5,10 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI } from '@google/genai';
 import { EXPENSE_CATEGORIES } from './sms.js';
 
+// Google retires older models for new keys (gemini-2.5-flash now returns 404), so the name lives in one place.
+// GEMINI_MODEL in Cloudflare overrides it without a code change.
+const geminiModel = env => env.GEMINI_MODEL || 'gemini-3.8-flash';
+
 function serviceClient(env) {
   const url = env.VITE_SUPABASE_URL || env.SUPABASE_URL;
   const key = env.SUPABASE_SERVICE_ROLE_KEY;
@@ -56,7 +60,7 @@ Merchant: ${JSON.stringify(draft.merchant)}
 Reply ONLY with a JSON object:
 {"category": "one of: ${EXPENSE_CATEGORIES.join(', ')}, Income, Savings", "bank_name": "bank or card issuer named in the SMS (e.g. HDFC, SBI, ICICI, Axis) or null"}`;
 
-      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+      const response = await ai.models.generateContent({ model: geminiModel(env), contents: prompt });
       const parsed = JSON.parse(response.text.trim().replace(/```json/g, '').replace(/```/g, '').trim());
 
       let category;
@@ -195,7 +199,7 @@ export function makeReceiptDeps(env) {
     async readReceipt(base64, mimeType) {
       const { RECEIPT_PROMPT } = await import('./receiptAi.js');
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: geminiModel(env),
         contents: [{ role: 'user', parts: [{ inlineData: { mimeType, data: base64 } }, { text: RECEIPT_PROMPT }] }],
         config: { responseMimeType: 'application/json' },
       });
