@@ -152,6 +152,11 @@ await test('returns cleaned items; reader failures are a friendly 502', async ()
   assert.deepEqual(r.body.receipt.items.map(i => i.name), ['Champinjoner', 'Lök']);
   const bad = await callReceipt({ ...okDeps, readReceipt: async () => { throw new Error('boom'); } }, { image: PNG });
   assert.equal(bad.status, 502);
+  assert.match(bad.body.error, /\(boom\)/);
+  const quota = await callReceipt({ ...okDeps, readReceipt: async () => { throw new Error('{"error":{"code":429,"status":"RESOURCE_EXHAUSTED"}}'); } }, { image: PNG });
+  assert.match(quota.body.error, /quota exceeded/);
+  const leak = await callReceipt({ ...okDeps, readReceipt: async () => { throw new Error('bad key AQ.Ab12cd-34ef'); } }, { image: PNG });
+  assert.doesNotMatch(leak.body.error, /AQ\.Ab12/);
 });
 
 console.log(failures ? `\n${failures} failed\n` : '\nAll passed\n');
