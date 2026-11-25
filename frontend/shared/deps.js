@@ -5,9 +5,25 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI } from '@google/genai';
 import { EXPENSE_CATEGORIES } from './sms.js';
 
-// Google retires older models for new keys (gemini-2.5-flash now returns 404), so the name lives in one place.
-// GEMINI_MODEL in Cloudflare overrides it without a code change.
-const geminiModel = env => env.GEMINI_MODEL || 'gemini-3.8-flash';
+// Google retires older models for new keys (gemini-2.5-flash now returns 404), so the names live in one place.
+// Gemini 3.x only: the receipt call sends thinkingLevel, which 2.5 models reject. No previews: most crowded.
+// GEMINI_MODEL in Cloudflare overrides the list without a code change, e.g. "gemini-3.8-flash,gemini-3.5-flash-lite".
+const geminiModels = env => (env.GEMINI_MODEL || 'gemini-3.8-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite')
+  .split(',').map(s => s.trim()).filter(Boolean);
+
+/** Ask each model in turn: a free-tier model is often overloaded (503) or out of its own quota (429). */
+export async function askGemini(env, ai, request) {
+  let last;
+  for (const [i, model] of geminiModels(env).entries()) {
+    if (i) await new Promise(r => setTimeout(r, 800));
+    try { return await ai.models.generateContent({ ...request, model }); } catch (err) {
+      last = err;
+      if (/API key not valid|API_KEY_INVALID/i.test(String(err?.message))) throw err; // same key for every model
+      console.warn(`Gemini ${model} failed, trying the next one:`, String(err?.message).slice(0, 120));
+    }
+  }
+  throw last;
+}
 
 function serviceClient(env) {
   const url = env.VITE_SUPABASE_URL || env.SUPABASE_URL;
@@ -60,7 +76,7 @@ Merchant: ${JSON.stringify(draft.merchant)}
 Reply ONLY with a JSON object:
 {"category": "one of: ${EXPENSE_CATEGORIES.join(', ')}, Income, Savings", "bank_name": "bank or card issuer named in the SMS (e.g. HDFC, SBI, ICICI, Axis) or null"}`;
 
-      const response = await ai.models.generateContent({ model: geminiModel(env), contents: prompt });
+      const response = await askGemini(env, ai, { contents: prompt });
       const parsed = JSON.parse(response.text.trim().replace(/```json/g, '').replace(/```/g, '').trim());
 
       let category;
@@ -198,21 +214,11 @@ export function makeReceiptDeps(env) {
 
     async readReceipt(base64, mimeType) {
       const { RECEIPT_PROMPT } = await import('./receiptAi.js');
-      const ask = () => ai.models.generateContent({
-        model: geminiModel(env),
+      const response = await askGemini(env, ai, {
         contents: [{ role: 'user', parts: [{ inlineData: { mimeType, data: base64 } }, { text: RECEIPT_PROMPT }] }],
         // Reading a receipt needs no deep reasoning; default thinking on Gemini 3 models takes over a minute.
         config: { responseMimeType: 'application/json', thinkingConfig: { thinkingLevel: 'LOW' } },
       });
-      // Google answers 503 "overloaded" in short bursts: wait and try again twice before giving up.
-      let response;
-      for (const wait of [0, 1500, 4000]) {
-        if (wait) await new Promise(r => setTimeout(r, wait));
-        try { response = await ask(); break; } catch (err) {
-          const busy = err?.status == 503 || /UNAVAILABLE|overloaded|"code":\s*503/i.test(String(err?.message));
-          if (!busy || wait === 4000) throw err;
-        }
-      }
       return JSON.parse(response.text.trim().replace(/^```json|```$/g, '').trim());
     },
   };

@@ -11,6 +11,23 @@ const sum = obj => Math.round(Object.values(obj).reduce((a, v) => a + (typeof v 
 const ALL = ['me', 'rahul', 'arjun'];
 
 console.log('\nSplitting');
+await test('Gemini: a busy model falls through to the next; a bad key stops at once', async () => {
+  const { askGemini } = await import('../shared/deps.js');
+  const tried = [];
+  const ai = fails => ({ models: { generateContent: async ({ model }) => {
+    tried.push(model);
+    if (fails[model]) throw new Error(fails[model]);
+    return { text: model };
+  } } });
+  const env = { GEMINI_MODEL: 'a, b ,c' };
+  assert.equal((await askGemini(env, ai({ a: '{"code":503,"status":"UNAVAILABLE"}', b: '429 RESOURCE_EXHAUSTED' }), {})).text, 'c');
+  assert.deepEqual(tried, ['a', 'b', 'c']);
+  tried.length = 0;
+  await assert.rejects(askGemini(env, ai({ a: 'API key not valid' }), {}), /API key/);
+  assert.deepEqual(tried, ['a'], 'same key for every model, so no point trying more');
+  await assert.rejects(askGemini(env, ai({ a: '503', b: '503', c: 'last one' }), {}), /last one/);
+});
+
 await test('mushrooms: Rahul pays nothing for them, others share', () => {
   const r = splitBill([
     { id: 'm', name: 'Champinjoner', price: 24.90, among: ['me', 'arjun'] },
