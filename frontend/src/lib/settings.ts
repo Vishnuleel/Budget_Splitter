@@ -83,6 +83,8 @@ const storageKey = (key: keyof Settings) => {
 const values = new Map<keyof Settings, unknown>();
 const listeners = new Set<() => void>();
 let cloudState: 'unknown' | 'ok' | 'missing' = 'unknown';
+// Postgres "undefined table" / PostgREST "table not in schema cache": schema.sql hasn't been run.
+const tableMissing = (e: { code?: string }) => e.code === '42P01' || e.code === 'PGRST205';
 
 function readLocal<K extends keyof Settings>(key: K): Settings[K] {
   try {
@@ -122,7 +124,9 @@ export function setSetting<K extends keyof Settings>(key: K, next: Settings[K] |
     supabase.from('app_settings')
       .upsert({ user_id: currentUser, key, value, updated_at: new Date().toISOString() }, { onConflict: 'user_id,key' })
       .then(({ error }) => {
-        cloudState = error ? 'missing' : 'ok';
+        // Only a missing table stops syncing; a network blip shouldn't switch it off for the session.
+        if (!error) cloudState = 'ok';
+        else if (tableMissing(error)) cloudState = 'missing';
         emit();
       });
   }
@@ -133,7 +137,7 @@ export async function syncSettingsFromCloud() {
   if (DEMO || !currentUser) return;
   const { data, error } = await supabase.from('app_settings').select('key, value').eq('user_id', currentUser);
   if (error) {
-    cloudState = 'missing';
+    if (tableMissing(error)) cloudState = 'missing';
     emit();
     return;
   }

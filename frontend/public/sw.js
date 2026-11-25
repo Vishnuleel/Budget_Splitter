@@ -5,7 +5,7 @@
  * - Everything else (Supabase, /api, exchange rates): straight to the network, never cached,
  *   so you never see stale balances.
  */
-const VERSION = 'v3'; // bump to refresh cached icons/shell after a redesign
+const VERSION = 'v4'; // bump to refresh cached icons/shell after a redesign
 const SHELL = `shell-${VERSION}`;
 const ASSETS = `assets-${VERSION}`;
 const FONTS = `fonts-${VERSION}`;
@@ -36,8 +36,8 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(req)
         .then(res => {
-          const copy = res.clone();
-          caches.open(SHELL).then(c => c.put('/', copy));
+          // Never let an error page replace the good offline shell.
+          if (res.ok && res.type === 'basic') { const copy = res.clone(); caches.open(SHELL).then(c => c.put('/', copy)); }
           return res;
         })
         .catch(() => caches.match('/')),
@@ -48,7 +48,9 @@ self.addEventListener('fetch', event => {
   if (url.origin === self.location.origin && (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/'))) {
     event.respondWith(
       caches.match(req).then(hit => hit || fetch(req).then(res => {
-        if (res.ok) { const copy = res.clone(); caches.open(ASSETS).then(c => c.put(req, copy)); }
+        // An old hashed file after a deploy can come back as index.html (SPA fallback): don't cache that as JS.
+        const html = (res.headers.get('content-type') || '').startsWith('text/html');
+        if (res.ok && !html) { const copy = res.clone(); caches.open(ASSETS).then(c => c.put(req, copy)); }
         return res;
       })),
     );

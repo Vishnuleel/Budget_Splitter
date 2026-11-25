@@ -74,7 +74,8 @@ create table if not exists public.transactions (
   merchant   text not null default 'Unknown',
   category   text not null default 'Uncategorized',
   raw_text   text,
-  account_id bigint references public.accounts(id) on delete set null
+  account_id bigint references public.accounts(id) on delete set null,
+  charged_inr numeric  -- rupees actually debited for a foreign card spend (for real forex markup)
 );
 
 create table if not exists public.vaults (
@@ -166,6 +167,7 @@ begin
 end $$;
 
 alter table public.transactions alter column date set default now();
+alter table public.transactions add column if not exists charged_inr numeric;
 create index if not exists transactions_user_date_idx on public.transactions (user_id, date desc);
 create index if not exists accounts_user_idx      on public.accounts (user_id);
 create index if not exists vaults_user_idx        on public.vaults (user_id);
@@ -187,6 +189,15 @@ begin
     execute format('revoke all on public.%I from anon', t);
   end loop;
 end $$;
+
+-- A transaction may only point at one of your own accounts (FK checks skip RLS,
+-- so without this anyone could attach rows to another person's account id).
+create index if not exists transactions_account_idx on public.transactions (account_id);
+drop policy if exists tx_own_account on public.transactions;
+create policy tx_own_account on public.transactions as restrictive for all to authenticated
+  using (true)
+  with check (account_id is null or exists (
+    select 1 from public.accounts a where a.id = account_id and a.user_id = auth.uid()));
 
 -- Profiles: read your own; change only your display name and SMS key.
 -- Role / paused / deleting accounts happen through the admin API (service role).
@@ -256,6 +267,7 @@ create table if not exists public.friendships (
 create unique index if not exists friendships_pair_idx
   on public.friendships (least(requester, addressee), greatest(requester, addressee));
 create index if not exists friendships_addressee_idx on public.friendships (addressee);
+create index if not exists friendships_requester_idx on public.friendships (requester);
 
 create table if not exists public.shared_bills (
   id         uuid primary key default gen_random_uuid(),

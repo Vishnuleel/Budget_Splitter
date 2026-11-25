@@ -201,7 +201,8 @@ export function makeReceiptDeps(env) {
       const response = await ai.models.generateContent({
         model: geminiModel(env),
         contents: [{ role: 'user', parts: [{ inlineData: { mimeType, data: base64 } }, { text: RECEIPT_PROMPT }] }],
-        config: { responseMimeType: 'application/json' },
+        // Reading a receipt needs no deep reasoning; default thinking on Gemini 3 models takes over a minute.
+        config: { responseMimeType: 'application/json', thinkingConfig: { thinkingLevel: 'LOW' } },
       });
       return JSON.parse(response.text.trim().replace(/^```json|```$/g, '').trim());
     },

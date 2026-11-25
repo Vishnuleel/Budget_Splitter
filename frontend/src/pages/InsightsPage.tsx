@@ -11,6 +11,7 @@ import { CATEGORY_META, categoryMeta, effectiveCategory, isExpense } from '../li
 import { daysInMonth, daysUntil, inMonth, monthLabel, pct } from '../lib/format';
 import type { Subscription, Transaction } from '../lib/types';
 import { money, moneyCompact, amt, CURRENCY_CODES, displayCurrency } from '../lib/money';
+import { fairInrOf, useCardCharges, type CardCharge } from '../lib/forex';
 
 function monthStats(transactions: Transaction[], y: number, m: number) {
   const days = daysInMonth(y, m);
@@ -18,6 +19,7 @@ function monthStats(transactions: Transaction[], y: number, m: number) {
   const byCat = new Map<string, number>();
   const byMerchant = new Map<string, { total: number; count: number; category: string }>();
   let spent = 0, income = 0, count = 0, abroadCard = 0, fees = 0;
+  const abroadTx: Transaction[] = [];
   for (const t of transactions) {
     if (!inMonth(t.date, y, m)) continue;
     const v = amt(t);
@@ -25,7 +27,7 @@ function monthStats(transactions: Transaction[], y: number, m: number) {
     if (!isExpense(t)) continue;
     spent += v; count++;
     // Non-rupee spends that came in as Indian bank SMS = your Indian card used abroad.
-    if ((t.currency ?? 'INR') !== 'INR' && t.raw_text) abroadCard += v;
+    if ((t.currency ?? 'INR') !== 'INR' && (t.raw_text || t.charged_inr)) { abroadCard += v; abroadTx.push(t); }
     if (effectiveCategory(t) === 'Bank fees') fees += v;
     daily[new Date(t.date).getDate() - 1] += v;
     const c = effectiveCategory(t);
@@ -34,7 +36,47 @@ function monthStats(transactions: Transaction[], y: number, m: number) {
     const prev = byMerchant.get(mk) ?? { total: 0, count: 0, category: c };
     byMerchant.set(mk, { total: prev.total + v, count: prev.count + 1, category: c });
   }
-  return { spent, income, count, daily, byCat, byMerchant, abroadCard, fees };
+  return { spent, income, count, daily, byCat, byMerchant, abroadCard, fees, abroadTx };
+}
+
+/**
+ * The forex markup tip. Uses what the card really charged where we know it (typed in, printed in the
+ * SMS, or from the available-limit drop), and your own average markup for the rest. The flat
+ * percentage from Settings is only the fallback before any real charge is known.
+ */
+function markupTip(abroadTx: Transaction[], abroadTotal: number, charges: Map<number, CardCharge>, fallbackPct: number) {
+  let all = { fair: 0, extra: 0 };
+  for (const c of charges.values()) all = { fair: all.fair + c.fair, extra: all.extra + c.extra };
+  const learned = all.fair > 0 ? (all.extra / all.fair) * 100 : null;
+
+  let fair = 0, extra = 0, n = 0;
+  const unknown: Transaction[] = [];
+  for (const t of abroadTx) {
+    const c = charges.get(t.id);
+    if (c) { fair += c.fair; extra += c.extra; n++; } else unknown.push(t);
+  }
+  const inr = (v: number) => money(v, { currency: 'INR' });
+  if (n > 0) {
+    const pctNow = fair > 0 ? (extra / fair) * 100 : 0;
+    const restEst = unknown.length && learned != null && learned > 0 ? estimateInr(unknown, learned) : 0;
+    return {
+      text: `Your card’s real markup this month is ${pctNow.toFixed(1)}%: ${inr(extra)} over the ECB rate on ${n} of ${abroadTx.length} payments abroad.`
+        + (restEst > 0 ? ` About ${inr(restEst)} more on the other ${unknown.length} at that rate.` : ''),
+      tone: extra > 0 ? 'bad' as const : 'good' as const,
+    };
+  }
+  const pct = learned ?? fallbackPct;
+  if (abroadTotal <= 0 || pct <= 0) return null;
+  return {
+    text: learned != null
+      ? `Your Indian card added about ${money((abroadTotal * pct) / 100)} in forex markup this month (${pct.toFixed(1)}%, learned from your past payments).`
+      : `Your Indian card added roughly ${money((abroadTotal * pct) / 100)} in forex markup this month (${pct}% on ${money(abroadTotal)} spent abroad). Add the rupees debited on a payment to see your real rate.`,
+    tone: 'bad' as const,
+  };
+}
+
+function estimateInr(txs: Transaction[], pct: number) {
+  return txs.reduce((s, t) => s + fairInrOf(t), 0) * (pct / 100);
 }
 
 function ChartTip({ active, payload, label }: { active?: boolean; payload?: { value: number; dataKey: string }[]; label?: number }) {
@@ -75,6 +117,7 @@ export default function InsightsPage({ hidden }: { hidden: boolean }) {
   const prev = cursor.m === 0 ? { y: cursor.y - 1, m: 11 } : { y: cursor.y, m: cursor.m - 1 };
 
   const cur = useMemo(() => monthStats(transactions, cursor.y, cursor.m), [transactions, cursor]);
+  const charges = useCardCharges(transactions);
   const last = useMemo(() => monthStats(transactions, prev.y, prev.m), [transactions, prev.y, prev.m]);
 
   const shift = (d: number) => {
@@ -104,10 +147,8 @@ export default function InsightsPage({ hidden }: { hidden: boolean }) {
 
   const insights = useMemo(() => {
     const out: { text: string; tone: 'good' | 'bad' | 'neutral' }[] = [];
-    if (cur.abroadCard > 0 && markup > 0) {
-      const lost = (cur.abroadCard * markup) / 100;
-      out.push({ text: `Your Indian card added roughly ${money(lost)} in forex markup this month (${markup}% on ${money(cur.abroadCard)} spent abroad).`, tone: 'bad' });
-    }
+    const fx = markupTip(cur.abroadTx, cur.abroadCard, charges, markup);
+    if (fx) out.push(fx);
     if (cur.fees > 0) out.push({ text: `Bank fees charged this month: ${money(cur.fees)}. A zero-markup card or a Swedish account would cut this.`, tone: 'bad' });
     if (cats[0]) out.push({ text: `${CATEGORY_META[cats[0][0]]?.short ?? cats[0][0]} is your biggest spend — ${Math.round(pct(cats[0][1], cur.spent))}% of the month.`, tone: 'neutral' });
     for (const [c, v] of cats.slice(0, 4)) {
@@ -131,7 +172,7 @@ export default function InsightsPage({ hidden }: { hidden: boolean }) {
     if (cur.daily[topDay] > 0) out.push({ text: `Heaviest day: ${topDay + 1} ${new Date(cursor.y, cursor.m, 1).toLocaleDateString('en-IN', { month: 'short' })} with ${money(cur.daily[topDay])}.`, tone: 'neutral' });
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cur, last, budget, isCurrent, markup]);
+  }, [cur, last, budget, isCurrent, markup, charges]);
 
   const subForm = (s?: Subscription): FormSpec => ({
     title: s ? s.name : 'New bill or subscription',

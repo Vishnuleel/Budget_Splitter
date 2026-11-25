@@ -12,8 +12,9 @@
     "cf:dev": "npm run build && wrangler pages dev",
     "cf:deploy": "npm run build && wrangler pages deploy",
     "test:admin": "node scripts/test-admin.mjs",
-    "test": "node scripts/test-ingest.mjs && node scripts/test-admin.mjs && node scripts/test-bill.mjs && node scripts/test-share.mjs && node scripts/test-friends.mjs",
+    "test": "node scripts/test-ingest.mjs && node scripts/test-admin.mjs && node scripts/test-bill.mjs && node scripts/test-share.mjs && node scripts/test-friends.mjs && node scripts/test-forex.mjs",
     "test:friends": "node scripts/test-friends.mjs",
+    "test:forex": "node scripts/test-forex.mjs",
     "test:bill": "node scripts/test-bill.mjs",
     "test:share": "node scripts/test-share.mjs"
   },

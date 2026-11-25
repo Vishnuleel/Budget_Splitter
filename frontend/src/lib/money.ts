@@ -56,6 +56,50 @@ export function useRates() {
   return useSyncExternalStore(cb => { listeners.add(cb); return () => listeners.delete(cb); }, () => state);
 }
 
+// ECB rates on past days, to compare a card charge with the fair rate on the day of the spend.
+const DAYS_KEY = 'bs:fx-days';
+let dayRates: Record<string, Record<string, number>> = (() => {
+  try { return JSON.parse(localStorage.getItem(DAYS_KEY) || '{}'); } catch { return {}; }
+})();
+const loadedRanges = new Set<string>();
+
+/** Fetch daily ECB rates for a date range (YYYY-MM-DD) in one request. Safe to call repeatedly. */
+export async function loadRatesBetween(from: string, to: string) {
+  const key = `${from}..${to}`;
+  if (loadedRanges.has(key)) return;
+  loadedRanges.add(key);
+  try {
+    const res = await fetch(`https://api.frankfurter.dev/v1/${key}?base=EUR&symbols=${CURRENCY_CODES.filter(c => c !== 'EUR').join(',')}`);
+    if (!res.ok) { loadedRanges.delete(key); return; } // 429/5xx: allow a retry later
+    const data = (await res.json()) as { rates: Record<string, Record<string, number>> };
+    dayRates = { ...dayRates };
+    for (const [day, r] of Object.entries(data.rates)) dayRates[day] = { ...r, EUR: 1 };
+    const days = Object.keys(dayRates).sort().slice(-400); // keep about a year and a bit
+    dayRates = Object.fromEntries(days.map(d => [d, dayRates[d]]));
+    try { localStorage.setItem(DAYS_KEY, JSON.stringify(dayRates)); } catch { /* ignore */ }
+    state = { ...state };
+    listeners.forEach(l => l());
+  } catch {
+    loadedRanges.delete(key); // offline: try again next time
+  }
+}
+
+/** Rates for a day: that day's ECB fix, else the last one before it (weekends, holidays), else today's. */
+export function ratesOn(day: string): Record<string, number> {
+  if (dayRates[day]) return { ...FALLBACK, ...dayRates[day] };
+  const earlier = Object.keys(dayRates).filter(d => d < day).sort().pop();
+  if (earlier && Date.parse(day) - Date.parse(earlier) < 5 * 86_400_000) return { ...FALLBACK, ...dayRates[earlier] };
+  return state.rates;
+}
+
+/** Like convert(), at the ECB rate of a given day. */
+export function convertOn(n: number, from: string | null | undefined, to: string, day: string) {
+  const f = (from || 'INR').toUpperCase();
+  if (f === to) return n;
+  const r = ratesOn(day);
+  return r[f] && r[to] ? (n / r[f]) * r[to] : n;
+}
+
 export const displayCurrency = (): CurrencyCode => getSetting('displayCurrency');
 
 export function convert(n: number, from: string | null | undefined, to: string = displayCurrency()) {

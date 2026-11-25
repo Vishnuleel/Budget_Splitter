@@ -60,6 +60,15 @@ await test('Rahul unticks mushrooms; picks apply to the split', async () => {
   assert.equal(r.per.rahul.items.some(i => i.id === 'mush'), false);
   assert.equal(Math.round(Object.values(r.per).reduce((a, p) => a + p.total * 100, 0)) / 100, 77.8);
 });
+await test('only the first device to answer for a name can change that answer', async () => {
+  const { h } = setup();
+  const { body: { token } } = await call(h, { action: 'create', bill: BILL }, 'tok');
+  const first = await call(h, { action: 'claim', token, personId: 'rahul', itemIds: ['milk'] });
+  assert.equal(first.status, 200);
+  assert.equal((await call(h, { action: 'claim', token, personId: 'rahul', itemIds: [] })).status, 403, 'no key');
+  assert.equal((await call(h, { action: 'claim', token, personId: 'rahul', itemIds: [], key: 'wrong' })).status, 403);
+  assert.equal((await call(h, { action: 'claim', token, personId: 'rahul', itemIds: ['mush'], key: first.body.key })).status, 200);
+});
 await test('people who did not answer keep the owner’s assignment', async () => {
   const items = applyClaims(BILL.items, { rahul: { itemIds: [] } });
   assert.deepEqual(items.find(i => i.id === 'milk').among, ['me', 'arjun']);

@@ -29,8 +29,10 @@ export async function readReceiptPhoto(file: File): Promise<ParsedReceipt> {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
       body: JSON.stringify({ image }),
+      signal: AbortSignal.timeout(45_000),
     });
-  } catch {
+  } catch (err) {
+    if ((err as Error)?.name === 'TimeoutError') throw new Error('Reading took too long. Try again, or paste the text.');
     throw new Error('Could not reach the server. Paste the receipt text instead?');
   }
   const json = await res.json().catch(() => ({ error: `Server error (${res.status}).` }));

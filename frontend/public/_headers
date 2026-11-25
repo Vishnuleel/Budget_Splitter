@@ -1,0 +1,7 @@
+# Cloudflare Pages response headers.
+# no-referrer: bill-share links carry a secret token in the URL (/b/<token>).
+# shortcut: no Content-Security-Policy yet (Supabase, fonts and rate APIs would each need listing); add one when the origins settle.
+/*
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff

@@ -8,6 +8,8 @@ export type Transaction = {
   currency?: string | null;
   raw_text?: string | null;
   account_id?: number | null;
+  /** Rupees the card was actually debited for a foreign spend, typed in by the person. */
+  charged_inr?: number | null;
 };
 
 export type Account = { id: number; name: string; balance: number; currency?: string | null; created_at?: string };

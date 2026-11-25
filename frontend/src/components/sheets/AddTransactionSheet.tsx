@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { CATEGORIES, CATEGORY_META } from '../../lib/categories';
-import { dayKey } from '../../lib/format';
+import { dayKey, parseAmount } from '../../lib/format';
 import { findRule, getSetting, setSetting } from '../../lib/settings';
 import { hintCategory } from '../../lib/parser';
 import { useData } from '../../store/DataContext';
@@ -79,7 +79,7 @@ function AddForm({ initialMode, onDone }: { initialMode: 'expense' | 'income'; o
     return out;
   }, [transactions, mode]);
 
-  const value = parseFloat(amount) || 0;
+  const value = parseAmount(amount);
   const valid = value > 0 && merchant.trim() && (mode === 'income' || category);
 
   const pickMerchant = (name: string, cat?: string) => {
@@ -135,9 +135,9 @@ function AddForm({ initialMode, onDone }: { initialMode: 'expense' | 'income'; o
           value={amount}
           style={{ width: `${Math.max(1, amount.length || 1)}ch` }}
           onChange={e => {
-            // Accept Swedish decimal commas ("49,90") as well as dots.
-            const v = e.target.value.replace(',', '.').replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
-            if (/^\d{0,8}(\.\d{0,2})?$/.test(v)) setAmount(v);
+            // Keep what was typed ("49,90", "1,200"); parseAmount decides which separator is the decimal.
+            const v = e.target.value.replace(/[^\d.,]/g, '');
+            if (v.length <= 14) setAmount(v);
           }}
           onKeyDown={e => { if (e.key === 'Enter') save(); }}
         />

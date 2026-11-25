@@ -90,6 +90,7 @@ export function DataProvider({ children, userId }: { children: ReactNode; userId
   // id -> timer + the delete to run (flushed immediately if the app unmounts mid-undo window)
   const pendingDeletes = useRef(new Map<number, { timer: number; run: () => void }>());
   const txIds = useRef(new Set<number>());
+  const payingSubs = useRef(new Set<number>());
   useEffect(() => { txIds.current = new Set(db.transactions.map(t => t.id)); }, [db.transactions]);
 
   const setTable = useCallback(<T extends Table>(table: T, fn: (list: Db[T]) => Db[T]) => {
@@ -105,20 +106,24 @@ export function DataProvider({ children, userId }: { children: ReactNode; userId
     }
     const tables: Table[] = ['transactions', 'accounts', 'vaults', 'deposits', 'debts', 'subscriptions'];
     const results = await Promise.all(tables.map(t => supabase.from(t).select('*')));
-    const next = { ...EMPTY };
+    const loaded: Partial<Db> = {};
     let failed = 0;
     results.forEach((res, i) => {
       const t = tables[i];
       if (res.error) { failed++; console.error(`Failed to load ${t}`, res.error); return; }
-      (next[t] as unknown[]) = normalize(t, (res.data ?? []) as Db[typeof t]);
+      (loaded[t] as unknown[]) = normalize(t, (res.data ?? []) as Db[typeof t]);
     });
     setDb(prev => {
+      // A table that failed keeps what we had, instead of showing up empty.
+      const next = { ...prev, ...loaded };
       // Keep rows that are mid "undo" window out of the list.
       next.transactions = next.transactions.filter(tx => !pendingDeletes.current.has(tx.id));
-      return failed === tables.length ? prev : next;
+      return next;
     });
     if (failed === tables.length) {
       toast({ message: 'Could not reach Supabase.', actionLabel: 'Try demo data', duration: 12000, onAction: () => setDemoMode(true) });
+    } else if (failed) {
+      toast({ message: 'Some of your data didn’t load. Reopen the app to try again.' });
     }
     setLoading(false);
   }, [toast]);
@@ -126,7 +131,9 @@ export function DataProvider({ children, userId }: { children: ReactNode; userId
   const update = useCallback<Ctx['update']>(async (table, id, patch) => {
     const { error } = DEMO ? { error: null } : await withCurrencyFallback(patch, p => supabase.from(table).update(p as never).eq('id', id));
     if (error) {
-      toast({ message: `Couldn't save: ${error.message}` });
+      toast({ message: /charged_inr/.test(error.message)
+        ? 'Couldn’t save the rupee amount yet: run the charged_inr line from supabase/schema.sql in Supabase.'
+        : `Couldn't save: ${error.message}` });
       return false;
     }
     setTable(table, list => (list as { id: number }[]).map(r => (r.id === id ? { ...r, ...patch } : r)) as Db[typeof table]);
@@ -231,9 +238,14 @@ export function DataProvider({ children, userId }: { children: ReactNode; userId
   }, [setTable, toast]);
 
   const markSubscriptionPaid = useCallback(async (sub: Subscription, logExpense: boolean) => {
+    // A double tap would log the expense twice (both taps see the same due date).
+    if (payingSubs.current.has(sub.id)) return;
+    payingSubs.current.add(sub.id);
     const next = nextCycleDate(sub.next_due_date ?? dayKey(new Date()), sub.cycle);
     const ok = await update('subscriptions', sub.id, { next_due_date: next });
-    if (!ok) return;
+    if (!ok) { payingSubs.current.delete(sub.id); return; }
+    // Released after a short delay so a tap that lands after `update` (stale `sub`) is still ignored.
+    window.setTimeout(() => payingSubs.current.delete(sub.id), 1500);
     if (logExpense) {
       await insert('transactions', {
         amount: Number(sub.amount),

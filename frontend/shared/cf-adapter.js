@@ -24,7 +24,13 @@ export function toCloudflare(makeHandler) {
   return async function onRequest({ request, env }) {
     const url = new URL(request.url);
     const headers = Object.fromEntries([...request.headers].map(([k, v]) => [k.toLowerCase(), v]));
-    if (!headers['x-forwarded-for']) headers['x-forwarded-for'] = request.headers.get('cf-connecting-ip') || 'cf';
+    // Rate limits key on this; a client-sent X-Forwarded-For can be anything, so always use Cloudflare's.
+    headers['x-forwarded-for'] = request.headers.get('cf-connecting-ip') || 'cf';
+    // Refuse huge bodies before reading them (a 6 MB photo is ~8 MB as base64).
+    // shortcut: trusts Content-Length; a chunked upload without it is still read in full.
+    if (Number(request.headers.get('content-length') || 0) > 12 * 1024 * 1024) {
+      return new Response(JSON.stringify({ error: 'Upload too large.' }), { status: 413, headers: { 'content-type': 'application/json; charset=utf-8' } });
+    }
     const req = { method: request.method, headers, query: Object.fromEntries(url.searchParams), body: await readBody(request) };
 
     return new Promise(resolve => {

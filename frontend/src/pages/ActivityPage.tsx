@@ -32,8 +32,9 @@ export default function ActivityPage({ hidden }: { hidden: boolean }) {
       if (q && !(`${t.merchant} ${t.category} ${t.amount}`.toLowerCase().includes(q))) return false;
       return true;
     });
-    if (sort === 'high') list = [...list].sort((a, b) => b.amount - a.amount);
-    if (sort === 'low') list = [...list].sort((a, b) => a.amount - b.amount);
+    // Compare in the display currency: 500 INR is less than 300 SEK.
+    if (sort === 'high') list = [...list].sort((a, b) => amt(b) - amt(a));
+    if (sort === 'low') list = [...list].sort((a, b) => amt(a) - amt(b));
     return list;
   }, [transactions, filter, q, sort]);
 

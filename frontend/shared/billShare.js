@@ -123,9 +123,16 @@ export function createBillShareHandler(deps) {
         if (personId === row.bill.payer) fail(400, 'The person who paid sets their own items in the app.');
         const valid = new Set(row.bill.items.map(i => i.id));
         const itemIds = [...new Set((Array.isArray(body.itemIds) ? body.itemIds : []).map(String))].filter(id => valid.has(id));
-        const claims = { ...(row.claims || {}), [personId]: { itemIds, at: new Date().toISOString() } };
+        // First answer for a name gets a key; changing it later needs that key, so others can't overwrite it.
+        const prev = row.claims?.[personId];
+        if (prev?.keyHash && prev.keyHash !== await sha256Hex(String(body.key || ''))) {
+          fail(403, 'Someone already answered for this name. Ask the person who paid to change it.');
+        }
+        const key = prev?.keyHash ? String(body.key) : newShareToken();
+        // shortcut: read-modify-write, two roommates answering in the same instant can lose one; use a jsonb merge RPC if that shows up.
+        const claims = { ...(row.claims || {}), [personId]: { itemIds, at: new Date().toISOString(), keyHash: await sha256Hex(key) } };
         await deps.saveClaims(row.id, claims);
-        return { ok: true };
+        return { ok: true, key };
       }
       default:
         fail(400, 'Unknown action.');

@@ -92,6 +92,15 @@ export function demoData() {
     { id: id++, date: new Date(now.getTime() - 5 * 3_600_000).toISOString(), merchant: 'Sumup Kebab Corner', category: 'Uncategorized', amount: 95, currency: 'SEK', raw_text: sms(95, 'SUMUP *KEBAB CORNER') },
   );
 
+  // Card SMS end with the available limit, like real ones, so the demo can show the real markup
+  // (each drop is the spend at 9.25 ₹/kr plus 3.4%; the app compares that with the real ECB rate).
+  let limit = 180000;
+  for (const t of [...txs].sort((a, b) => Date.parse(a.date) - Date.parse(b.date))) {
+    if (!t.raw_text?.startsWith('Txn of SEK')) continue;
+    limit = Math.round((limit - Number(t.amount) * 9.25 * 1.034) * 100) / 100;
+    t.raw_text += ` Avl Lmt: INR ${limit.toFixed(2)}`;
+  }
+
   txs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const accounts: Account[] = [

@@ -37,4 +37,5 @@ export const createShare = (bill: ShareBill) => call<{ id: string; token: string
 export const shareStatus = (ids: string[]) => call<{ shares: { id: string; claims: Claims; expiresAt: string }[] }>({ action: 'status', ids }, true);
 export const closeShare = (id: string) => call<{ ok: true }>({ action: 'close', id }, true);
 export const viewShare = (token: string) => call<{ bill: ShareBill; answered: string[]; expiresAt: string }>({ action: 'view', token }, false);
-export const submitClaim = (token: string, personId: string, itemIds: string[]) => call<{ ok: true }>({ action: 'claim', token, personId, itemIds }, false);
+export const submitClaim = (token: string, personId: string, itemIds: string[], key?: string) =>
+  call<{ ok: true; key: string }>({ action: 'claim', token, personId, itemIds, key }, false);

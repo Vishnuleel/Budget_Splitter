@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Split, Trash2, ChevronDown } from 'lucide-react';
 import type { Transaction } from '../../lib/types';
 import { categoryMeta, CATEGORY_META, suggestionOf } from '../../lib/categories';
-import { dayLabel, timeLabel } from '../../lib/format';
+import { dayLabel, parseAmount, timeLabel } from '../../lib/format';
 import { setSetting } from '../../lib/settings';
 import { useData } from '../../store/DataContext';
 import { useUI } from '../../store/UIContext';
@@ -11,6 +11,7 @@ import { useFeedback } from '../ui/Feedback';
 import { Field, Segmented, Sheet, Switch, Tile } from '../ui/primitives';
 import { CategoryGrid } from './AddTransactionSheet';
 import { money } from '../../lib/money';
+import { fairInrOf, isForeignSpend, useCardCharges } from '../../lib/forex';
 
 export function saveMerchantRule(merchant: string, category: string) {
   if (!merchant || merchant === 'Unknown' || category === 'Income') return;
@@ -22,7 +23,7 @@ export function saveMerchantRule(merchant: string, category: string) {
 }
 
 function TxDetail({ tx, onClose }: { tx: Transaction; onClose: () => void }) {
-  const { update, removeTransactionWithUndo, accounts } = useData();
+  const { update, removeTransactionWithUndo, accounts, transactions } = useData();
   const { openSheet } = useUI();
   const { toast } = useFeedback();
   const suggested = suggestionOf(tx.category);
@@ -37,14 +38,27 @@ function TxDetail({ tx, onClose }: { tx: Transaction; onClose: () => void }) {
   const meta = categoryMeta(kind === 'income' ? 'Income' : category || tx.category);
   const account = accounts.find(a => a.id === tx.account_id);
 
+  // Foreign card spend: what the card really took in rupees, to measure the bank's markup.
+  const foreign = isForeignSpend(tx);
+  const known = useCardCharges(transactions).get(tx.id);
+  const [charged, setCharged] = useState(tx.charged_inr ? String(tx.charged_inr) : '');
+  const amountNum = parseAmount(amount);
+  const chargedNum = parseAmount(charged);
+  const chargedChanged = chargedNum !== (Number(tx.charged_inr) || 0);
+  const fair = foreign ? fairInrOf({ ...tx, amount: amountNum || 0 }) : 0;
+  const shownInr = chargedNum > 0 ? chargedNum : known && known.source !== 'manual' ? known.inr : 0;
+  const extra = shownInr - fair;
+
   const finalCategory = kind === 'income' ? 'Income' : category;
-  const dirty = merchant !== tx.merchant || Number(amount) !== tx.amount || finalCategory !== tx.category;
-  const valid = merchant.trim() && Number(amount) > 0 && finalCategory;
+  const dirty = merchant !== tx.merchant || amountNum !== tx.amount || finalCategory !== tx.category || chargedChanged;
+  const valid = merchant.trim() && amountNum > 0 && finalCategory;
 
   const save = async () => {
     if (!valid) return;
     setSaving(true);
-    const ok = await update('transactions', tx.id, { merchant: merchant.trim(), amount: Number(amount), category: finalCategory });
+    const patch: Partial<Transaction> = { merchant: merchant.trim(), amount: amountNum, category: finalCategory };
+    if (chargedChanged) patch.charged_inr = chargedNum > 0 ? chargedNum : null; // only sent when edited
+    const ok = await update('transactions', tx.id, patch);
     setSaving(false);
     if (!ok) return;
     if (remember && kind === 'expense' && finalCategory !== tx.category) {
@@ -62,7 +76,7 @@ function TxDetail({ tx, onClose }: { tx: Transaction; onClose: () => void }) {
           <Tile icon={meta.icon} color={meta.color} size={54} radius={18} />
         </motion.div>
         <div className="display num" style={{ fontSize: '1.8rem', color: kind === 'income' ? 'var(--income)' : 'var(--ink)' }}>
-          {kind === 'income' ? '+' : '−'}{money(Number(amount) || 0, { decimals: true, currency: tx.currency ?? 'INR' })}
+          {kind === 'income' ? '+' : '−'}{money(amountNum || 0, { decimals: true, currency: tx.currency ?? 'INR' })}
         </div>
         <div className="faint" style={{ fontWeight: 700, fontSize: '0.85rem' }}>
           {dayLabel(new Date(tx.date))} · {timeLabel(new Date(tx.date))}{account ? ` · ${account.name}` : ''}
@@ -76,9 +90,32 @@ function TxDetail({ tx, onClose }: { tx: Transaction; onClose: () => void }) {
           <input className="input" value={merchant} onChange={e => setMerchant(e.target.value)} />
         </Field>
         <Field label={`Amount (${tx.currency ?? 'INR'})`}>
-          <input className="input num" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value.replace(',', '.').replace(/[^\d.]/g, ''))} />
+          <input className="input num" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value.replace(/[^\d.,]/g, ''))} />
         </Field>
       </div>
+
+      {foreign && kind === 'expense' && (
+        <div className="field">
+          <Field label="Debited from your card (₹)">
+            <input className="input num" inputMode="decimal" value={charged}
+              placeholder={known && known.source !== 'manual' ? known.inr.toFixed(2) : 'From your bank app or statement'}
+              onChange={e => setCharged(e.target.value.replace(/[^\d.,]/g, ''))} />
+          </Field>
+          <div className="faint" style={{ fontSize: '0.8rem', fontWeight: 600, marginTop: 6, lineHeight: 1.45 }}>
+            {shownInr > 0 ? (
+              <>
+                {chargedNum > 0 ? 'You entered this.' : known?.source === 'sms' ? 'Read from the SMS.' : 'Worked out from the drop in your card’s available limit.'}{' '}
+                ECB rate: {money(fair, { currency: 'INR', decimals: true })} ·{' '}
+                <span style={{ color: extra > 0 ? 'var(--rose-ink)' : 'var(--income)', fontWeight: 800 }}>
+                  {extra >= 0 ? 'markup' : 'below ECB by'} {money(Math.abs(extra), { currency: 'INR', decimals: true })} ({fair > 0 ? (Math.abs(extra) / fair * 100).toFixed(1) : '0'}%)
+                </span>
+              </>
+            ) : (
+              <>The SMS didn’t say how many rupees were taken. Type the amount from your card app to see your real markup.</>
+            )}
+          </div>
+        </div>
+      )}
 
       <AnimatePresence initial={false}>
         {kind === 'expense' && (

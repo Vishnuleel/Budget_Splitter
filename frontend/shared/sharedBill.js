@@ -106,6 +106,8 @@ export function transition(row, actor, action, args = {}) {
   const member = row.members.find(m => m.user_id === (isOwner ? args.member : actor));
   if (!member) throw new Error('You’re not on this bill.');
   const shares = () => computeShares(row.bill).per;
+  // Notes come straight from the request body: keep them short strings (an object would crash the UI).
+  const text = v => (typeof v === 'string' && v.trim() ? v.trim().slice(0, 500) : null);
   const key = personKey(member.user_id);
   const set = (patch, bill = row.bill) => ({
     bill,
@@ -117,13 +119,13 @@ export function transition(row, actor, action, args = {}) {
       return set({ status: 'accepted', removed: [], ack_total: shares()[key]?.total ?? 0 });
     case 'decline':
       if (isOwner || member.status === 'declined' || member.paid !== 'none') throw new Error('Can’t decline now.');
-      return set({ status: 'declined', note: args.note ?? member.note });
+      return set({ status: 'declined', note: text(args.note) ?? member.note ?? null });
     case 'request_change': {
       if (isOwner || !['pending', 'accepted'].includes(member.status) || member.paid !== 'none') throw new Error('Can’t change this bill now.');
       const mine = new Set(row.bill.items.filter(i => i.among.includes(key)).map(i => i.id));
       const removed = (args.removed || []).filter(id => mine.has(id));
       if (!removed.length) throw new Error('Untick at least one item.');
-      return set({ status: 'change_requested', removed, note: args.note ?? null, reply: null });
+      return set({ status: 'change_requested', removed, note: text(args.note), reply: null });
     }
     case 'approve_change': {
       if (!isOwner || member.status !== 'change_requested') throw new Error('No change to approve.');
@@ -138,7 +140,7 @@ export function transition(row, actor, action, args = {}) {
     }
     case 'keep':
       if (!isOwner || member.status !== 'change_requested') throw new Error('No change to answer.');
-      return set({ status: 'pending', removed: [], reply: args.reply || 'Kept you on those items.' });
+      return set({ status: 'pending', removed: [], reply: text(args.reply) || 'Kept you on those items.' });
     case 'ack':
       if (isOwner || member.status !== 'accepted') throw new Error('Nothing to acknowledge.');
       return set({ ack_total: shares()[key]?.total ?? 0 });

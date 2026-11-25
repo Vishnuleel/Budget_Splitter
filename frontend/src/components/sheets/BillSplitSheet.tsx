@@ -64,6 +64,19 @@ function BigOption({ icon, title, sub, onClick, primary }: { icon: ReactNode; ti
   );
 }
 
+/** Keeps what was typed ("8,", "0,5") as text; a controlled number would erase the comma mid-typing. */
+function PriceInput({ price, label, onPrice }: { price: number; label: string; onPrice: (n: number) => void }) {
+  const [draft, setDraft] = useState(price ? String(price).replace('.', ',') : '');
+  return (
+    <input className="bill-price num" inputMode="decimal" aria-label={label} value={draft} placeholder="0,00"
+      onChange={e => {
+        const raw = e.target.value.replace(/[^\d.,-]/g, '');
+        setDraft(raw);
+        onPrice(parseFloat(raw.replace(',', '.')) || 0);
+      }} />
+  );
+}
+
 function Body({ prefill, onDone }: { prefill?: BillPrefill; onDone: () => void }) {
   const [splits, setSplits] = useSetting('splits');
   const [displayCurrency] = useSetting('displayCurrency');
@@ -207,7 +220,15 @@ function Body({ prefill, onDone }: { prefill?: BillPrefill; onDone: () => void }
     setStep('assign');
   };
 
+  // One save at a time: a double tap would add the split (and the expense / share) twice.
+  const saving = useRef(false);
   const save = async (withLink = false) => {
+    if (saving.current) return;
+    saving.current = true;
+    try { await saveOnce(withLink); } finally { saving.current = false; }
+  };
+
+  const saveOnce = async (withLink: boolean) => {
     if (result.unassigned.length) { toast({ message: 'Some items have nobody on them. Assign or delete them first.' }); setStep('assign'); return; }
     let sharedId: string | undefined;
     if (sendsToApps) {
@@ -439,9 +460,7 @@ function Body({ prefill, onDone }: { prefill?: BillPrefill; onDone: () => void }
                         <motion.div className="bgr-edit" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}>
                           <div className="row" style={{ gap: 8 }}>
                             <input className="bill-name" value={item.name} placeholder="Item name" aria-label="Item name" onChange={e => patchItem(item.id, { name: e.target.value })} />
-                            <input className="bill-price num" inputMode="decimal" aria-label={`Price of ${item.name || 'item'}`}
-                              value={item.price ? String(item.price).replace('.', ',') : ''} placeholder="0,00"
-                              onChange={e => patchItem(item.id, { price: parseFloat(e.target.value.replace(',', '.').replace(/[^\d.-]/g, '')) || 0 })} />
+                            <PriceInput price={item.price} label={`Price of ${item.name || 'item'}`} onPrice={price => patchItem(item.id, { price })} />
                           </div>
                           <div className="row" style={{ gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                             <button type="button" className="btn btn-sm btn-ghost" onClick={() => setAmong(item.id, [payer])}><User size={13} /> Only {nameOf(payer) === 'You' ? 'me' : nameOf(payer)}</button>

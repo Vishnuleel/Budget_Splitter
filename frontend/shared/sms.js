@@ -30,17 +30,22 @@ function normCurrency(c) {
 /** All money mentions in order, e.g. [{currency:'SEK', amount:245}, {currency:'INR', amount:2345.6}]. */
 export function findAmounts(text) {
   const out = [];
-  const before = new RegExp(`${CUR}\\s*${NUM}`, 'gi'); // "SEK 245.00", "Rs.1,250"
+  // (?<![A-Za-z]) so "Rs" inside a word ("bars 12") isn't read as rupees.
+  const before = new RegExp(`(?<![A-Za-z])${CUR}\\s*${NUM}`, 'gi'); // "SEK 245.00", "Rs.1,250"
   for (const m of text.matchAll(before)) out.push({ index: m.index, currency: normCurrency(m[1]), amount: toNumber(m[2]) });
-  // Swedish style after the number: "1 245,00 kr"
-  for (const m of text.matchAll(/(\d{1,3}(?:[ .]\d{3})*(?:,\d{1,2})?)\s*(kr|SEK)\b/gi)) {
+  // Swedish style after the number: "1 245,00 kr", "245.50 kr", "1245,50 kr". Never start mid-number.
+  for (const m of text.matchAll(/(?<![\d.,])(\d{1,3}(?:[ .]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(kr|SEK)\b/gi)) {
     if (out.some(o => Math.abs(o.index - m.index) < 6)) continue;
-    out.push({ index: m.index, currency: 'SEK', amount: parseFloat(m[1].replace(/[ .]/g, '').replace(',', '.')) });
+    const dec = m[1].match(/[.,](\d{1,2})$/);
+    const whole = (dec ? m[1].slice(0, dec.index) : m[1]).replace(/[ .]/g, '');
+    out.push({ index: m.index, currency: 'SEK', amount: parseFloat(dec ? `${whole}.${dec[1]}` : whole) });
   }
   return out.filter(a => a.amount > 0).sort((a, b) => a.index - b.index);
 }
 
 function toNumber(s) {
+  // "245,50" (one comma, two digits after) is a European decimal; grouping always ends in three digits.
+  if (/^\d{1,3},\d{2}$/.test(s)) return parseFloat(s.replace(',', '.')) || 0;
   return parseFloat(s.replace(/[,\s]/g, '')) || 0;
 }
 
@@ -50,7 +55,8 @@ const MERCHANT_PATTERNS = [
   // ICICI style: "... on 15-Nov-26 on NETFLIX.COM. Avl Limit"
   /\bon\s+\d{1,2}-[A-Za-z]{3}-\d{2,4}\s+(?:on|at)\s+(.+?)(?:\.\s|\.$|\s+Avl|\s+Avbl|$)/i,
   // Axis style: "... 15-11-26 18:22:10 IST ICA NARA Avl Lmt"
-  /\d{1,2}:\d{2}(?::\d{2})?\s+(?:IST\s+)?([A-Za-z0-9][\w&*.' -]{1,40}?)\s+(?:Avl|Avbl|Available)/i,
+  // (Never "PM"/"Avbl": IDFC writes "on 24 NOV 2026 at 09:58 PM Avbl Limit", with the merchant earlier.)
+  /\d{1,2}:\d{2}(?::\d{2})?\s+(?:[AP]M\s+)?(?:IST\s+)?(?!(?:[AP]M|Avl|Avbl|Available)\b)([A-Za-z0-9][\w&*.' -]{1,40}?)\s+(?:Avl|Avbl|Available)/i,
   // HDFC / SBI cards: "at ICA SUPERMARKET STOCKHOLM on 2026-11-15"
   /\bat\s+(.+?)\s+on\s+\d/i,
   /\bto\s+(?!your\b|a\/c|ac\b)(.+?)\s+on\s+\d{1,2}[-/]\d{1,2}[-/]\d{2,4}/i,

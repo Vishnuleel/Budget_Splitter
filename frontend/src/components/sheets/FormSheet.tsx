@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Trash2 } from 'lucide-react';
 import { Field, Sheet } from '../ui/primitives';
+import { parseAmount } from '../../lib/format';
 
 export type FormField = {
   name: string;
@@ -37,8 +38,11 @@ function FormBody({ spec, onClose }: { spec: FormSpec; onClose: () => void }) {
   const submit = async () => {
     if (!valid || busy) return;
     setBusy(true);
-    const ok = await spec.onSubmit(values);
-    setBusy(false);
+    let ok: boolean | void = false;
+    // Number fields leave here as plain "1200.5" so every form's Number(v.x) reads "1,200" / "49,90" right.
+    const clean = { ...values };
+    for (const f of spec.fields) if (f.type === 'number' && clean[f.name]) clean[f.name] = String(parseAmount(clean[f.name]));
+    try { ok = await spec.onSubmit(clean); } finally { setBusy(false); }
     if (ok !== false) onClose();
   };
 
@@ -70,7 +74,10 @@ function FormBody({ spec, onClose }: { spec: FormSpec; onClose: () => void }) {
                   autoFocus={i === 0}
                   onChange={e => {
                     const raw = e.target.value;
-                    setValues(v => ({ ...v, [f.name]: f.type === 'number' ? raw.replace(/[^\d.]/g, '') : raw }));
+                    setValues(v => ({ ...v, [f.name]: f.type === 'number'
+                      // "49,90" means 49.90: turn the comma into a point instead of dropping it, keep one point.
+                      ? raw.replace(/[^\d.,]/g, '') // parsed with parseAmount on submit
+                      : raw }));
                   }}
                 />
               )}

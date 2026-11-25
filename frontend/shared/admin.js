@@ -173,7 +173,7 @@ export function createAdminHandler(deps) {
     } catch (err) {
       if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
       console.error('Admin API error:', err);
-      return res.status(500).json({ error: err?.message || 'Something went wrong.' });
+      return res.status(500).json({ error: 'Something went wrong.' });
     }
   };
 }

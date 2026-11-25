@@ -51,6 +51,7 @@ export function failureReason(err) {
   if (/PERMISSION_DENIED|403/.test(msg) || status == 403) return 'Gemini: key not allowed to use this model';
   if (/not found|NOT_FOUND|404/i.test(msg) || status == 404) return 'Gemini: model not available';
   if (/UNAVAILABLE|overloaded|503/i.test(msg) || status == 503) return 'Gemini is busy';
+  if (/DEADLINE_EXCEEDED|timed? ?out|\b(504|524)\b/i.test(msg) || status == 504 || status == 524) return 'Gemini took too long';
   if (/JSON/i.test(msg)) return 'unreadable reply from Gemini';
   // Fallback: the first line of the error, trimmed, with anything key-like removed.
   return (msg.split('\n')[0] || 'unknown error').replace(/(AIza|AQ\.)[\w.-]+/g, '[key]').slice(0, 120);

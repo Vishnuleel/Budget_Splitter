@@ -1,6 +1,18 @@
 const inrFmt = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 const inrFmt2 = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/**
+ * Typed or pasted money → number. "49,90" = 49.9 · "1,200" / "1,23,456" = grouping ·
+ * "1,234.50" / "1.234,50" = the last separator is the decimal.
+ */
+export function parseAmount(s: string): number {
+  let t = s.replace(/\s/g, '');
+  if (t.includes(',') && t.includes('.')) t = t.lastIndexOf(',') > t.lastIndexOf('.') ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '');
+  else if (/^\d{1,3}(,\d{2,3})*,\d{3}$/.test(t)) t = t.replace(/,/g, '');
+  else t = t.replace(',', '.');
+  return Math.round((parseFloat(t) || 0) * 100) / 100;
+}
+
 /** ₹1,23,456 — Indian digit grouping. */
 export function inr(n: number, opts: { decimals?: boolean; sign?: boolean } = {}) {
   const v = Number(n) || 0;

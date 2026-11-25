@@ -17,6 +17,7 @@ export default function ClaimPage({ token }: { token: string }) {
   const [who, setWho] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
@@ -40,12 +41,17 @@ export default function ClaimPage({ token }: { token: string }) {
   const send = async () => {
     if (!who) return;
     setBusy(true);
+    setSendError(null);
     try {
-      await submitClaim(token, who, [...picked]);
+      // The key from the first answer lets this device change its picks later; nobody else can.
+      const slot = `bs-claim:${token}:${who}`;
+      const { key } = await submitClaim(token, who, [...picked], localStorage.getItem(slot) ?? undefined);
+      try { localStorage.setItem(slot, key); } catch { /* private mode: can't edit later */ }
       setAnswered(a => [...new Set([...a, who])]);
       setDone(true);
     } catch (e) {
-      setError((e as Error).message);
+      // Keep the picks on screen; a network blip shouldn't replace the page with "can't open".
+      setSendError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -130,9 +136,10 @@ export default function ClaimPage({ token }: { token: string }) {
                     <motion.div key={estimate} initial={{ scale: 1.12 }} animate={{ scale: 1 }} className="num" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.3rem' }}>{fmt(estimate ?? 0)}</motion.div>
                   </div>
                   <motion.button type="button" className="btn btn-marigold" disabled={busy} whileTap={{ scale: 0.96 }} onClick={send}>
-                    {busy ? 'Sending…' : `Send my picks`}
+                    {busy ? 'Sending…' : sendError ? 'Try again' : `Send my picks`}
                   </motion.button>
                 </div>
+                {sendError && <p role="alert" style={{ marginTop: 10, fontSize: '0.85rem', fontWeight: 600, color: 'var(--coral, #c2410c)' }}>Couldn’t send: {sendError}</p>}
               </motion.div>
             )}
             {done && who && (

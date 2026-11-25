@@ -7,7 +7,7 @@ import FriendsPanel from './FriendsPanel';
 import { useShared } from '../../lib/sharedApi';
 import { useSetting } from '../../lib/settings';
 import { avatarColor, balances, settleWith, uid } from '../../lib/splits';
-import { initials } from '../../lib/format';
+import { initials, parseAmount } from '../../lib/format';
 import { useFeedback } from '../ui/Feedback';
 import { AnimatedNumber, Field, Sheet } from '../ui/primitives';
 import { money, displayCurrency } from '../../lib/money';
@@ -58,7 +58,7 @@ function SplitsBody({ prefill }: { prefill?: { title: string; amount: number } }
     setNewName('');
   };
 
-  const value = parseFloat(amount) || 0;
+  const value = parseAmount(amount);
   const share = among.length ? value / among.length : 0;
   const validSplit = title.trim() && value > 0 && among.length >= 1 && among.some(a => a !== paidBy);
 
@@ -143,7 +143,7 @@ function SplitsBody({ prefill }: { prefill?: { title: string; amount: number } }
                 <input className="input" placeholder="Dinner, cab…" value={title} onChange={e => setTitle(e.target.value)} />
               </Field>
               <Field label={`Total (${displayCurrency()})`}>
-                <input className="input num" inputMode="decimal" placeholder="0" value={amount} onChange={e => setAmount(e.target.value.replace(',', '.').replace(/[^\d.]/g, ''))} />
+                <input className="input num" inputMode="decimal" placeholder="0" value={amount} onChange={e => setAmount(e.target.value.replace(/[^\d.,]/g, ''))} />
               </Field>
             </div>
             <div>
