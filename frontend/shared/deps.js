@@ -198,12 +198,21 @@ export function makeReceiptDeps(env) {
 
     async readReceipt(base64, mimeType) {
       const { RECEIPT_PROMPT } = await import('./receiptAi.js');
-      const response = await ai.models.generateContent({
+      const ask = () => ai.models.generateContent({
         model: geminiModel(env),
         contents: [{ role: 'user', parts: [{ inlineData: { mimeType, data: base64 } }, { text: RECEIPT_PROMPT }] }],
         // Reading a receipt needs no deep reasoning; default thinking on Gemini 3 models takes over a minute.
         config: { responseMimeType: 'application/json', thinkingConfig: { thinkingLevel: 'LOW' } },
       });
+      // Google answers 503 "overloaded" in short bursts: wait and try again twice before giving up.
+      let response;
+      for (const wait of [0, 1500, 4000]) {
+        if (wait) await new Promise(r => setTimeout(r, wait));
+        try { response = await ask(); break; } catch (err) {
+          const busy = err?.status == 503 || /UNAVAILABLE|overloaded|"code":\s*503/i.test(String(err?.message));
+          if (!busy || wait === 4000) throw err;
+        }
+      }
       return JSON.parse(response.text.trim().replace(/^```json|```$/g, '').trim());
     },
   };
