@@ -280,7 +280,7 @@ button, [role='button'], a, select, label[for] { cursor: pointer; }
   100% { transform: translate(16px, -10px) scale(0.94); }
 }
 .hero-kolam { position: absolute; inset: 0; z-index: -1; opacity: 0.07; pointer-events: none; }
-.hero-label { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--hero-ink-2); font-weight: 700; }
+.hero-label { font-size: 0.8rem; color: var(--hero-ink-2); font-weight: 500; }
 .hero-amount { font-family: var(--font-display); font-size: clamp(1.9rem, 8.5vw, 2.4rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; margin-top: 6px; }
 .hero-amount .rupee { color: var(--brand); margin-right: 2px; font-weight: 600; }
 .hero-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
@@ -400,11 +400,9 @@ textarea.input { resize: vertical; min-height: 110px; line-height: 1.45; font-si
 /* ── Transactions ──────────────────────────────────────── */
 .day-head {
   display: flex; justify-content: space-between; align-items: baseline;
-  font-size: 0.7rem; font-weight: 800; color: var(--ink-3);
-  text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 0.8rem; font-weight: 600; color: var(--ink-3);
   padding: 12px 4px 6px;
 }
-.day-head .num { text-transform: none; letter-spacing: 0; }
 .tx-wrap { position: relative; border-radius: 18px; overflow: hidden; }
 .tx-delete-bg {
   position: absolute; inset: 0; background: var(--rose); color: #fff;
@@ -483,7 +481,7 @@ textarea.input { resize: vertical; min-height: 110px; line-height: 1.45; font-si
   width: 52px; height: 52px; border-radius: 16px;
   background: var(--brand); color: var(--on-brand);
   display: grid; place-items: center;
-  box-shadow: 0 8px 20px -8px rgba(245, 158, 11, 0.7);
+  box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.35);
   margin-top: -20px;
   border: 3px solid var(--bg);
 }
@@ -599,9 +597,10 @@ textarea.input { resize: vertical; min-height: 110px; line-height: 1.45; font-si
 .list-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; font-size: 0.9rem; border-bottom: 1px solid var(--line); }
 .list-row:last-child { border-bottom: none; }
 .stat-trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 11px 10px; }
-.stat .k { font-size: 0.7rem; color: var(--ink-3); font-weight: 700; }
-.stat .v { font-family: var(--font-display); font-size: 1.02rem; font-weight: 700; margin-top: 4px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px; min-width: 0; }
+.stat .k { font-size: 0.72rem; color: var(--ink-3); font-weight: 500; }
+.stat .v { font-family: var(--font-display); font-size: 1rem; font-weight: 600; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat .sub { font-size: 0.72rem; color: var(--ink-3); font-weight: 500; margin-top: 4px; }
 
 .heatmap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
 .heat-cell {
@@ -785,7 +784,6 @@ h1, h2, h3, .display { font-weight: 800; letter-spacing: -0.01em; }
   border: 0;
   box-shadow: var(--clay), 0 18px 34px -20px rgba(74, 108, 150, 0.55);
 }
-.hero-label { letter-spacing: 0.06em; }
 .hero-amount { font-weight: 900; }
 .hero-amount .rupee { color: inherit; }
 .hero-pill { background: color-mix(in srgb, var(--surface) 45%, transparent); border: 0; border-radius: 16px; box-shadow: var(--clay-sm); }
@@ -793,10 +791,10 @@ h1, h2, h3, .display { font-weight: 800; letter-spacing: -0.01em; }
 
 /* Pastel clay quick actions. */
 .quick-icon { width: 54px; height: 54px; border: 0; border-radius: 20px; box-shadow: var(--clay-sm); transition: transform 380ms var(--spring); }
-.quick:nth-child(4n + 1) .quick-icon { background: var(--tint-1); }
-.quick:nth-child(4n + 2) .quick-icon { background: var(--tint-2); }
-.quick:nth-child(4n + 3) .quick-icon { background: var(--tint-3); }
-.quick:nth-child(4n + 4) .quick-icon { background: var(--tint-4); }
+/* Action tiles stay neutral: their colours meant nothing. The split card carries the accent. */
+.split-cta { width: 100%; text-align: left; background: var(--jade); color: var(--on-primary); border-color: transparent; }
+.split-cta .faint { color: inherit; opacity: 0.8; }
+.split-cta-icon { width: 40px; height: 40px; background: color-mix(in srgb, var(--on-primary) 16%, transparent); color: inherit; }
 .quick:active .quick-icon { transform: scale(0.88); transition: transform 120ms ease-out; }
 .quick { color: var(--ink-2); }
 
@@ -822,7 +820,7 @@ h1, h2, h3, .display { font-weight: 800; letter-spacing: -0.01em; }
 .fab {
   border-radius: 20px; border: 0;
   background: var(--jade); color: var(--on-primary);
-  box-shadow: inset -4px -5px 8px rgba(0, 0, 0, 0.16), inset 4px 4px 8px rgba(255, 255, 255, 0.25), 0 12px 22px -10px var(--jade);
+  box-shadow: inset -4px -5px 8px rgba(0, 0, 0, 0.16), inset 4px 4px 8px rgba(255, 255, 255, 0.25), 0 6px 14px -8px rgba(0, 0, 0, 0.4);
   transition: transform 380ms var(--spring);
 }
 .fab:active { transform: scale(0.88); transition: transform 120ms ease-out; }

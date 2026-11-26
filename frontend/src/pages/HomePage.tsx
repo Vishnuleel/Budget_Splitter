@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { motion } from 'motion/react';
 import {
-  Minus, Plus, MessageSquareText, Split, Target, CalendarClock, Landmark, Download,
-  Sparkles, ChevronRight, Bell, type LucideIcon,
+  Plus, MessageSquareText, Split, Target, Download, ReceiptText,
+  Tag, ChevronRight, Bell, type LucideIcon,
 } from 'lucide-react';
 import BalanceCard from '../components/BalanceCard';
 import TransactionRow from '../components/TransactionRow';
@@ -18,9 +18,9 @@ import { useShared } from '../lib/sharedApi';
 import { saveMerchantRule } from '../components/sheets/TxSheet';
 import { money, moneyCompact, amt } from '../lib/money';
 
-type Action = { label: string; icon: LucideIcon; color: string; onClick: () => void };
+type Action = { label: string; icon: LucideIcon; onClick: () => void };
 
-export default function HomePage({ hidden, onToggleHidden }: { hidden: boolean; onToggleHidden: () => void }) {
+export default function HomePage({ hidden }: { hidden: boolean }) {
   const { transactions, accounts, deposits, debts, subscriptions, freshIds, update, removeTransactionWithUndo, markSubscriptionPaid } = useData();
   const { openSheet, setTab, setActivityFilter } = useUI();
   const [budget] = useSetting('monthlyBudget');
@@ -62,37 +62,32 @@ export default function HomePage({ hidden, onToggleHidden }: { hidden: boolean; 
 
   const upcoming = subscriptions.filter(s => s.next_due_date).slice(0, 4);
 
+  // Only actions with no other way in: expenses use the + button, Wealth and Bills are tabs, splitting has its own card.
   const actions: Action[] = [
-    { label: 'Add expense', icon: Minus, color: '#c8402f', onClick: () => openSheet({ kind: 'add', mode: 'expense' }) },
-    { label: 'Add income', icon: Plus, color: '#0b8457', onClick: () => openSheet({ kind: 'add', mode: 'income' }) },
-    { label: 'Paste SMS', icon: MessageSquareText, color: '#2f6fd6', onClick: () => openSheet({ kind: 'sms' }) },
-    { label: 'Split bill', icon: Split, color: '#c2417f', onClick: () => openSheet({ kind: 'splits' }) },
-    { label: 'Budgets', icon: Target, color: '#d4900f', onClick: () => openSheet({ kind: 'budgets' }) },
-    { label: 'Bills', icon: CalendarClock, color: '#8e5cd9', onClick: () => setTab('insights') },
-    { label: 'Wealth', icon: Landmark, color: '#0e7c66', onClick: () => setTab('wealth') },
-    { label: 'Export', icon: Download, color: '#64748b', onClick: () => exportCsv(transactions) },
+    { label: 'Add income', icon: Plus, onClick: () => openSheet({ kind: 'add', mode: 'income' }) },
+    { label: 'Paste SMS', icon: MessageSquareText, onClick: () => openSheet({ kind: 'sms' }) },
+    { label: 'Budgets', icon: Target, onClick: () => openSheet({ kind: 'budgets' }) },
+    { label: 'Export', icon: Download, onClick: () => exportCsv(transactions) },
   ];
 
   return (
     <motion.div className="page" variants={stagger} initial="hidden" animate="show">
-      <BalanceCard netWorth={netWorth} spent={spent} income={income} hidden={hidden} onToggleHidden={onToggleHidden} onOpenWealth={() => setTab('wealth')} />
+      <BalanceCard netWorth={netWorth} spent={spent} income={income} hidden={hidden} onOpenWealth={() => setTab('wealth')} />
+
+      {/* The product's own job, first: split a shop receipt item by item. */}
+      <motion.button variants={rise} type="button" className="card row split-cta" onClick={() => openSheet({ kind: 'splits' })} whileTap={{ scale: 0.98 }}>
+        <span className="tile split-cta-icon"><ReceiptText size={20} /></span>
+        <div className="grow">
+          <div style={{ fontWeight: 600 }}>Split a receipt</div>
+          <div className="faint" style={{ fontSize: '0.8rem', fontWeight: 500 }}>Scan it, tick who had what, everyone sees their share</div>
+        </div>
+        <ChevronRight size={20} className="faint" />
+      </motion.button>
 
       <motion.div variants={rise} className="quick-grid" role="list">
-        {actions.map((a, i) => (
-          <motion.button
-            key={a.label}
-            type="button"
-            role="listitem"
-            className="quick"
-            onClick={a.onClick}
-            initial={{ opacity: 0, y: 12, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ delay: 0.12 + i * 0.035, type: 'spring', stiffness: 380, damping: 24 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <motion.span className="quick-icon" whileHover={{ y: -2 }}>
-              <a.icon size={21} strokeWidth={2.1} />
-            </motion.span>
+        {actions.map(a => (
+          <motion.button key={a.label} type="button" role="listitem" className="quick" onClick={a.onClick} whileTap={{ scale: 0.96 }}>
+            <span className="quick-icon"><a.icon size={20} strokeWidth={1.75} /></span>
             {a.label}
           </motion.button>
         ))}
@@ -103,8 +98,8 @@ export default function HomePage({ hidden, onToggleHidden }: { hidden: boolean; 
           onClick={() => (shared.todo.length === 1 ? openSheet({ kind: 'shared', id: shared.todo[0].bill.id }) : openSheet({ kind: 'splits' }))} whileTap={{ scale: 0.98 }}>
           <span className="tile" style={{ width: 36, height: 36, background: 'var(--jade)', color: 'var(--on-primary)' }}><Bell size={18} /></span>
           <div className="grow">
-            <div style={{ fontWeight: 800 }}>{shared.todo.length === 1 ? 'A shared bill needs you' : `${shared.todo.length} shared bills need you`}</div>
-            <div className="faint" style={{ fontSize: '0.8rem', fontWeight: 600 }}>Review, approve a change, or confirm a payment</div>
+            <div style={{ fontWeight: 600 }}>{shared.todo.length === 1 ? 'A shared bill needs you' : `${shared.todo.length} shared bills need you`}</div>
+            <div className="faint" style={{ fontSize: '0.8rem', fontWeight: 500 }}>Review, approve a change, or confirm a payment</div>
           </div>
           <ChevronRight size={20} className="faint" />
         </motion.button>
@@ -119,13 +114,12 @@ export default function HomePage({ hidden, onToggleHidden }: { hidden: boolean; 
           onClick={() => { setActivityFilter('review'); setTab('activity'); }}
           whileTap={{ scale: 0.98 }}
         >
-          <motion.span animate={{ rotate: [0, 14, -10, 0] }} transition={{ repeat: Infinity, repeatDelay: 2.5, duration: 0.6 }}
-            className="tile" style={{ width: 36, height: 36, background: 'var(--marigold)', color: 'var(--on-brand)' }}>
-            <Sparkles size={18} />
-          </motion.span>
+          <span className="tile" style={{ width: 36, height: 36, background: 'var(--marigold)', color: 'var(--on-brand)' }}>
+            <Tag size={18} />
+          </span>
           <div className="grow">
-            <div style={{ fontWeight: 800, color: 'var(--marigold-ink)' }}>{reviewCount} payment{reviewCount > 1 ? 's' : ''} need a category</div>
-            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--marigold-ink)', opacity: 0.85 }}>One tap each — we’ll learn the merchant.</div>
+            <div style={{ fontWeight: 600, color: 'var(--marigold-ink)' }}>{reviewCount} payment{reviewCount > 1 ? 's' : ''} need a category</div>
+            <div style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--marigold-ink)', opacity: 0.85 }}>One tap each, and the merchant is remembered</div>
           </div>
           <ChevronRight size={20} color="var(--marigold-ink)" />
         </motion.button>
@@ -135,17 +129,17 @@ export default function HomePage({ hidden, onToggleHidden }: { hidden: boolean; 
         <Ring value={used} size={76} stroke={8} color={ringColor}>
           <div>
             <div className="display num" style={{ fontSize: '1.05rem' }}>{Math.round(used * 100)}%</div>
-            <div className="faint" style={{ fontSize: '0.65rem', fontWeight: 800 }}>USED</div>
+            <div className="faint" style={{ fontSize: '0.68rem', fontWeight: 500 }}>used</div>
           </div>
         </Ring>
         <div className="grow">
-          <div className="faint" style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.04em' }}>
-            {now.toLocaleDateString('en-IN', { month: 'long' }).toUpperCase()} BUDGET
+          <div className="faint" style={{ fontSize: '0.8rem', fontWeight: 500 }}>
+            {now.toLocaleDateString('en-IN', { month: 'long' })} budget
           </div>
           <div className={`display num${hidden ? ' blurred' : ''}`} style={{ fontSize: '1.15rem', marginTop: 2 }}>
             {money(spent)} <span className="faint" style={{ fontSize: '0.95rem', fontWeight: 600 }}>of {moneyCompact(budget)}</span>
           </div>
-          <div style={{ fontSize: '0.82rem', fontWeight: 700, marginTop: 6, color: remaining < 0 ? 'var(--rose)' : 'var(--ink-2)' }}>
+          <div style={{ fontSize: '0.82rem', fontWeight: 500, marginTop: 6, color: remaining < 0 ? 'var(--rose)' : 'var(--ink-2)' }}>
             {remaining < 0
               ? `Over by ${money(-remaining)} — ease up this week`
               : `${money(perDay)}/day left for ${daysLeft} day${daysLeft > 1 ? 's' : ''}`}
@@ -157,8 +151,8 @@ export default function HomePage({ hidden, onToggleHidden }: { hidden: boolean; 
         <motion.button variants={rise} type="button" className="card row" style={{ width: '100%', textAlign: 'left' }} onClick={() => openSheet({ kind: 'splits' })} whileTap={{ scale: 0.98 }}>
           <span className="tile" style={{ width: 42, height: 42, background: '#c2417f1f', color: '#c2417f' }}><Split size={20} /></span>
           <div className="grow">
-            <div style={{ fontWeight: 800 }}>{owedToMe > 0 ? 'Friends owe you' : 'You owe friends'}</div>
-            <div className="faint" style={{ fontSize: '0.8rem', fontWeight: 600 }}>Tap to settle up</div>
+            <div style={{ fontWeight: 600 }}>{owedToMe > 0 ? 'Friends owe you' : 'You owe friends'}</div>
+            <div className="faint" style={{ fontSize: '0.8rem', fontWeight: 500 }}>Tap to settle up</div>
           </div>
           <div className="display num" style={{ fontSize: '1.15rem', color: owedToMe > 0 ? 'var(--income)' : 'var(--rose)' }}>{money(Math.abs(owedToMe))}</div>
         </motion.button>
@@ -172,9 +166,9 @@ export default function HomePage({ hidden, onToggleHidden }: { hidden: boolean; 
               const d = daysUntil(s.next_due_date);
               const tone = d == null ? 'neutral' : d < 0 ? 'bad' : d <= 3 ? 'warn' : 'good';
               return (
-                <motion.div key={s.id} className="card card-tight" style={{ width: 150 }} whileHover={{ y: -3 }}>
+                <motion.div key={s.id} className="card card-tight" style={{ width: 150 }}>
                   <div className="row" style={{ justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 800 }} className="ellipsis">{s.name}</span>
+                    <span style={{ fontWeight: 600 }} className="ellipsis">{s.name}</span>
                   </div>
                   <div className="display num" style={{ fontSize: '1.05rem', margin: '4px 0' }}>{money(s.amount, { currency: s.currency ?? 'INR' })}</div>
                   <span className={`badge ${tone}`}>

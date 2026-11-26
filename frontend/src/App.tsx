@@ -127,7 +127,7 @@ function Shell({ onLock }: { onLock: () => void }) {
                 exit="exit"
                 transition={{ type: 'spring', stiffness: 420, damping: 38 }}
               >
-                {tab === 'home' && <HomePage hidden={hidden} onToggleHidden={() => setHidden(h => !h)} />}
+                {tab === 'home' && <HomePage hidden={hidden} />}
                 {tab === 'activity' && <ActivityPage hidden={hidden} />}
                 {tab === 'insights' && <Suspense fallback={<SkeletonHome />}><InsightsPage hidden={hidden} /></Suspense>}
                 {tab === 'wealth' && <WealthPage hidden={hidden} />}

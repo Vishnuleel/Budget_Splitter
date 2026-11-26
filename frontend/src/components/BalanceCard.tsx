@@ -1,8 +1,7 @@
 import { motion, useMotionValue, useSpring, useTransform } from 'motion/react';
-import { Eye, EyeOff, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { AnimatedNumber } from './ui/primitives';
 import { money, displayCurrency, symbolOf } from '../lib/money';
-
 
 /** Kolam-inspired dot-and-loop texture used on the night card. */
 export function Kolam({ id }: { id: string }) {
@@ -26,9 +25,8 @@ export function Kolam({ id }: { id: string }) {
   );
 }
 
-export default function BalanceCard({ netWorth, spent, income, hidden, onToggleHidden, onOpenWealth }: {
-  netWorth: number; spent: number; income: number; hidden: boolean;
-  onToggleHidden: () => void; onOpenWealth: () => void;
+export default function BalanceCard({ netWorth, spent, income, hidden, onOpenWealth }: {
+  netWorth: number; spent: number; income: number; hidden: boolean; onOpenWealth: () => void;
 }) {
   const sym = symbolOf(displayCurrency());
   const symbolFirst = money(1).startsWith(sym);
@@ -56,24 +54,11 @@ export default function BalanceCard({ netWorth, spent, income, hidden, onToggleH
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 200, damping: 24 }}
       >
-        <div className="hero-blob a" />
-        <div className="hero-blob b" />
-        <div className="hero-blob c" />
         <Kolam id="kolam-hero" />
         <motion.div style={{ position: 'absolute', inset: 0, background: glare, pointerEvents: 'none' }} />
 
-        <div className="row" style={{ justifyContent: 'space-between' }}>
-          <span className="hero-label">Net worth</span>
-          <motion.button
-            type="button"
-            onClick={onToggleHidden}
-            whileTap={{ scale: 0.85 }}
-            aria-label={hidden ? 'Show balances' : 'Hide balances'}
-            style={{ color: 'var(--hero-ink-2)', display: 'flex', padding: 6, margin: -6 }}
-          >
-            {hidden ? <EyeOff size={18} /> : <Eye size={18} />}
-          </motion.button>
-        </div>
+        {/* Hiding amounts lives in the header eye only; one toggle, not two. */}
+        <span className="hero-label">Net worth</span>
 
         <button type="button" onClick={onOpenWealth} style={{ display: 'block', textAlign: 'left', color: 'inherit' }} aria-label="Open wealth">
           <motion.div className="hero-amount num" animate={{ filter: hidden ? 'blur(10px)' : 'blur(0px)' }}>

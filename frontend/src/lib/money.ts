@@ -141,7 +141,7 @@ export function money(n: number, opts: { currency?: string | null; decimals?: bo
   return `${sign}${body}`;
 }
 
-/** 12,5 tkr · 1,2 mkr · ₹3.4L · €12.5k */
+/** Full amounts below 100 000; above: 125 tkr · 1,2 mkr · ₹3.4L · €125k */
 export function moneyCompact(n: number, currency?: string | null) {
   const cur = (currency || displayCurrency()).toUpperCase();
   const v = Math.abs(Number(n) || 0);
@@ -150,19 +150,18 @@ export function moneyCompact(n: number, currency?: string | null) {
   if (cur === 'INR') {
     if (v >= 1e7) return `${sign}₹${one(v / 1e7)}Cr`;
     if (v >= 1e5) return `${sign}₹${one(v / 1e5)}L`;
-    if (v >= 1e3) return `${sign}₹${one(v / 1e3)}K`;
-    return `${sign}₹${Math.round(v)}`;
+    return `${sign}${money(v, { currency: cur })}`;
   }
   if (cur === 'SEK' || cur === 'NOK' || cur === 'DKK') {
     const sw = (x: number) => one(x).replace('.', ',');
     if (v >= 1e6) return `${sign}${sw(v / 1e6)} mkr`;
-    if (v >= 1e4) return `${sign}${sw(v / 1e3)} tkr`;
+    if (v >= 1e5) return `${sign}${sw(v / 1e3)} tkr`; // only past 100 000, so "14 628 kr" sits next to "4 406 kr"
     return `${sign}${money(v, { currency: cur })}`;
   }
   const sym = CURRENCIES[cur as CurrencyCode]?.short ?? cur;
   if (v >= 1e6) return `${sign}${sym}${one(v / 1e6)}M`;
-  if (v >= 1e3) return `${sign}${sym}${one(v / 1e3)}k`;
-  return `${sign}${sym}${Math.round(v)}`;
+  if (v >= 1e5) return `${sign}${sym}${one(v / 1e3)}k`;
+  return `${sign}${money(v, { currency: cur })}`;
 }
 
 /** Symbol shown next to amount inputs. */

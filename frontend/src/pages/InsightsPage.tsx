@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Plus, Lightbulb } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Lightbulb } from 'lucide-react';
 import { Area, AreaChart, CartesianGrid, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, Pie, PieChart, Cell } from 'recharts';
 import { AnimatedNumber, Bar, SectionHead, Tile, rise, stagger } from '../components/ui/primitives';
 import FormSheet, { type FormSpec } from '../components/sheets/FormSheet';
@@ -10,7 +10,7 @@ import { getSetting, useSetting } from '../lib/settings';
 import { CATEGORY_META, categoryMeta, effectiveCategory, isExpense } from '../lib/categories';
 import { daysInMonth, daysUntil, inMonth, monthLabel, pct } from '../lib/format';
 import type { Subscription, Transaction } from '../lib/types';
-import { money, moneyCompact, amt, CURRENCY_CODES, displayCurrency } from '../lib/money';
+import { money, moneyCompact, amt, convert, CURRENCY_CODES } from '../lib/money';
 import { fairInrOf, useCardCharges, type CardCharge } from '../lib/forex';
 
 function monthStats(transactions: Transaction[], y: number, m: number) {
@@ -55,13 +55,14 @@ function markupTip(abroadTx: Transaction[], abroadTotal: number, charges: Map<nu
     const c = charges.get(t.id);
     if (c) { fair += c.fair; extra += c.extra; n++; } else unknown.push(t);
   }
-  const inr = (v: number) => money(v, { currency: 'INR' });
+  // Card charges are in rupees; show them in the display currency like every other figure here.
+  const shown = (v: number) => money(convert(v, 'INR'));
   if (n > 0) {
     const pctNow = fair > 0 ? (extra / fair) * 100 : 0;
     const restEst = unknown.length && learned != null && learned > 0 ? estimateInr(unknown, learned) : 0;
     return {
-      text: `Your card’s real markup this month is ${pctNow.toFixed(1)}%: ${inr(extra)} over the ECB rate on ${n} of ${abroadTx.length} payments abroad.`
-        + (restEst > 0 ? ` About ${inr(restEst)} more on the other ${unknown.length} at that rate.` : ''),
+      text: `Your card’s real markup this month is ${pctNow.toFixed(1)}%: ${shown(extra)} over the ECB rate on ${n} of ${abroadTx.length} payments abroad.`
+        + (restEst > 0 ? ` About ${shown(restEst)} more on the other ${unknown.length} at that rate.` : ''),
       tone: extra > 0 ? 'bad' as const : 'good' as const,
     };
   }
@@ -90,14 +91,6 @@ function ChartTip({ active, payload, label }: { active?: boolean; payload?: { va
       {day && day.value > 0 && <div style={{ opacity: 0.8 }}>{money(day.value)} that day</div>}
     </div>
   );
-}
-
-
-/** Short y-axis labels that always fit: "8 tkr" rather than "8 000 kr". */
-function axisTick(v: number) {
-  const cur = displayCurrency().toUpperCase();
-  if (Math.abs(v) >= 1000 && ['SEK', 'NOK', 'DKK'].includes(cur)) return `${String(Math.round(v / 100) / 10).replace('.', ',')} tkr`;
-  return moneyCompact(v);
 }
 
 export default function InsightsPage({ hidden }: { hidden: boolean }) {
@@ -214,41 +207,40 @@ export default function InsightsPage({ hidden }: { hidden: boolean }) {
           <div className="k">Spent</div>
           <div className={`v num${hidden ? ' blurred' : ''}`}><AnimatedNumber value={cur.spent} format={moneyCompact} /></div>
           {delta != null && (
-            <span className={`badge ${delta > 0 ? 'bad' : 'good'}`} style={{ marginTop: 6 }}>
-              {delta > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{Math.abs(Math.round(delta))}%
-            </span>
+            <div className="sub" style={{ color: delta > 0 ? 'var(--rose)' : 'var(--income)' }}>
+              {delta > 0 ? '+' : '−'}{Math.abs(Math.round(delta))}% vs last month
+            </div>
           )}
         </div>
         <div className="stat">
           <div className="k">Received</div>
           <div className={`v num${hidden ? ' blurred' : ''}`} style={{ color: 'var(--income)' }}><AnimatedNumber value={cur.income} format={moneyCompact} /></div>
-          <span className="badge neutral" style={{ marginTop: 6 }}>{cur.count} spends</span>
+          <div className="sub">{cur.count} spends</div>
         </div>
         <div className="stat">
-          <div className="k">Kept</div>
+          <div className="k">Left over</div>
           <div className={`v num${hidden ? ' blurred' : ''}`} style={{ color: cur.income - cur.spent >= 0 ? 'var(--ink)' : 'var(--rose)' }}>
             <AnimatedNumber value={cur.income - cur.spent} format={moneyCompact} />
           </div>
-          <span className="badge neutral" style={{ marginTop: 6 }}>net</span>
         </div>
       </motion.div>
 
       {insights.length > 0 && (
-        <motion.div variants={rise} className="scroller">
+        <motion.div variants={rise} style={{ display: 'grid', gap: 8 }}>
           {insights.map((ins, i) => (
-            <motion.div key={ins.text} className="card card-tight" style={{ width: 250, display: 'flex', gap: 10, alignItems: 'flex-start' }}
-              initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + i * 0.07 }}>
+            <motion.div key={ins.text} className="card card-tight" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}
+              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.05 }}>
               <span className="tile" style={{ width: 32, height: 32, borderRadius: 10, background: ins.tone === 'good' ? 'var(--income-soft)' : ins.tone === 'bad' ? 'var(--rose-soft)' : 'var(--marigold-soft)', color: ins.tone === 'good' ? 'var(--income)' : ins.tone === 'bad' ? 'var(--rose)' : 'var(--marigold-ink)' }}>
                 <Lightbulb size={16} />
               </span>
-              <p style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.4 }}>{ins.text}</p>
+              <p style={{ fontSize: '0.85rem', fontWeight: 500, lineHeight: 1.4, alignSelf: 'center' }}>{ins.text}</p>
             </motion.div>
           ))}
         </motion.div>
       )}
 
       <motion.section variants={rise} className="card">
-        <SectionHead title="Budget pace" action={<span className="faint row" style={{ fontSize: '0.78rem', fontWeight: 700, gap: 6 }}><span style={{ width: 14, borderTop: '2px dashed var(--marigold)' }} />on-budget line</span>} />
+        <SectionHead title="Budget pace" action={<span className="faint row" style={{ fontSize: '0.78rem', fontWeight: 500, gap: 6 }}><span style={{ width: 14, borderTop: '2px dashed var(--marigold-ink)' }} />on-budget line</span>} />
         <div style={{ height: 190, marginLeft: -10 }}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 8, right: 6, bottom: 0, left: 0 }}>
@@ -259,10 +251,10 @@ export default function InsightsPage({ hidden }: { hidden: boolean }) {
                 </linearGradient>
               </defs>
               <CartesianGrid vertical={false} stroke="var(--line)" />
-              <XAxis dataKey="d" tickLine={false} axisLine={false} tick={{ fill: 'var(--ink-3)', fontSize: 11, fontWeight: 700 }} interval={Math.ceil(days / 6) - 1} />
-              <YAxis tickLine={false} axisLine={false} width={52} tick={{ fill: 'var(--ink-3)', fontSize: 11, fontWeight: 700 }} tickFormatter={axisTick} />
+              <XAxis dataKey="d" tickLine={false} axisLine={false} tick={{ fill: 'var(--ink-3)', fontSize: 11, fontWeight: 500 }} interval={Math.ceil(days / 6) - 1} />
+              <YAxis tickLine={false} axisLine={false} width={64} tick={{ fill: 'var(--ink-3)', fontSize: 11, fontWeight: 500 }} tickFormatter={v => money(v)} />
               <Tooltip content={<ChartTip />} cursor={{ stroke: 'var(--line-strong)' }} />
-              {budget > 0 && <Line type="linear" dataKey="pace" stroke="var(--marigold)" strokeDasharray="5 5" strokeWidth={2} dot={false} isAnimationActive={false} />}
+              {budget > 0 && <Line type="linear" dataKey="pace" stroke="var(--marigold-ink)" strokeDasharray="5 5" strokeWidth={2} dot={false} isAnimationActive={false} />}
               <Area type="monotone" dataKey="cum" stroke="var(--jade)" strokeWidth={3} fill="url(#cumFill)" connectNulls={false} animationDuration={900} />
               <Area type="monotone" dataKey="day" stroke="none" fill="transparent" />
             </AreaChart>
@@ -288,7 +280,7 @@ export default function InsightsPage({ hidden }: { hidden: boolean }) {
               <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none', textAlign: 'center' }}>
                 <AnimatePresence mode="wait">
                   <motion.div key={activeCat ?? 'total'} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.15 }}>
-                    <div className="faint" style={{ fontSize: '0.72rem', fontWeight: 800 }}>{activeCat ? (CATEGORY_META[activeCat]?.short ?? activeCat).toUpperCase() : 'TOTAL'}</div>
+                    <div className="faint" style={{ fontSize: '0.72rem', fontWeight: 600 }}>{activeCat ? CATEGORY_META[activeCat]?.short ?? activeCat : 'Total'}</div>
                     <div className={`display num${hidden ? ' blurred' : ''}`} style={{ fontSize: '1.15rem' }}>{money(activeCat ? cur.byCat.get(activeCat) ?? 0 : cur.spent)}</div>
                   </motion.div>
                 </AnimatePresence>
@@ -305,14 +297,14 @@ export default function InsightsPage({ hidden }: { hidden: boolean }) {
                     onHoverStart={() => setActiveCat(c)} onHoverEnd={() => setActiveCat(null)}>
                     <Tile icon={meta.icon} color={meta.color} size={36} radius={12} />
                     <div className="grow">
-                      <div style={{ fontWeight: 800 }}>{meta.short}</div>
-                      <div className="faint" style={{ fontSize: '0.78rem', fontWeight: 700, color: over ? 'var(--rose)' : undefined }}>
+                      <div style={{ fontWeight: 600 }}>{meta.short}</div>
+                      <div className="faint" style={{ fontSize: '0.78rem', fontWeight: 500, color: over ? 'var(--rose)' : undefined }}>
                         {Math.round(pct(v, cur.spent))}%{cap ? ` · cap ${moneyCompact(cap)}${over ? ' — over' : ''}` : ''}
                       </div>
                     </div>
-                    <div className={`num${hidden ? ' blurred' : ''}`} style={{ fontWeight: 800 }}>{money(v)}</div>
+                    <div className={`num${hidden ? ' blurred' : ''}`} style={{ fontWeight: 600 }}>{money(v)}</div>
                     <div style={{ width: '100%', marginTop: 8 }}>
-                      <Bar value={cap ? pct(v, cap) : pct(v, cats[0][1])} color={over ? 'var(--rose)' : meta.color} delay={0.1 + i * 0.05} />
+                      <Bar value={cap ? pct(v, cap) : pct(v, cats[0][1])} color={over ? 'var(--rose)' : i === 0 ? 'var(--jade)' : 'var(--ink-3)'} delay={0.1 + i * 0.05} />
                     </div>
                   </motion.button>
                 );
@@ -323,7 +315,7 @@ export default function InsightsPage({ hidden }: { hidden: boolean }) {
       </motion.section>
 
       <motion.section variants={rise} className="card">
-        <SectionHead title="Spending calendar" action={<span className="faint" style={{ fontSize: '0.78rem', fontWeight: 700 }}>darker = more spent</span>} />
+        <SectionHead title="Spending calendar" action={<span className="faint" style={{ fontSize: '0.78rem', fontWeight: 500 }}>darker = more spent</span>} />
         <div className="heatmap" role="grid" aria-label="Daily spending">
           {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <div key={i} className="heat-dow">{d}</div>)}
           {Array.from({ length: firstDow }, (_, i) => <div key={`pad${i}`} />)}
@@ -358,7 +350,7 @@ export default function InsightsPage({ hidden }: { hidden: boolean }) {
         <AnimatePresence>
           {pickedDay != null && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
-              <div className="row" style={{ justifyContent: 'space-between', marginTop: 12, padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 14, fontWeight: 800 }}>
+              <div className="row" style={{ justifyContent: 'space-between', marginTop: 12, padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 14, fontWeight: 600 }}>
                 <span>{new Date(cursor.y, cursor.m, pickedDay + 1).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}</span>
                 <span className="num">{money(cur.daily[pickedDay])}</span>
               </div>
@@ -377,10 +369,10 @@ export default function InsightsPage({ hidden }: { hidden: boolean }) {
                 <span className="display faint num" style={{ width: 18, fontSize: '0.95rem' }}>{i + 1}</span>
                 <Tile icon={meta.icon} color={meta.color} size={36} radius={12} />
                 <div className="grow">
-                  <div style={{ fontWeight: 800 }} className="ellipsis">{name}</div>
-                  <div className="faint" style={{ fontSize: '0.78rem', fontWeight: 700 }}>{info.count} payment{info.count > 1 ? 's' : ''}</div>
+                  <div style={{ fontWeight: 600 }} className="ellipsis">{name}</div>
+                  <div className="faint" style={{ fontSize: '0.78rem', fontWeight: 500 }}>{info.count} payment{info.count > 1 ? 's' : ''}</div>
                 </div>
-                <div className={`num${hidden ? ' blurred' : ''}`} style={{ fontWeight: 800 }}>{money(info.total)}</div>
+                <div className={`num${hidden ? ' blurred' : ''}`} style={{ fontWeight: 600 }}>{money(info.total)}</div>
               </div>
             );
           })}
@@ -400,7 +392,7 @@ export default function InsightsPage({ hidden }: { hidden: boolean }) {
           <div className="empty">Track rent (hyra), your SL card, phone, gym and streaming. We’ll remind you before they’re due.</div>
         ) : (
           <div className="card" style={{ padding: '4px 16px' }}>
-            <div className="row faint" style={{ justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700, padding: '10px 0 4px' }}>
+            <div className="row faint" style={{ justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 500, padding: '10px 0 4px' }}>
               <span>{subscriptions.length} active</span><span className="num">≈ {money(monthlyBills)}/month</span>
             </div>
             {subscriptions.map(s => {
@@ -409,13 +401,13 @@ export default function InsightsPage({ hidden }: { hidden: boolean }) {
               return (
                 <div key={s.id} className="list-row">
                   <button type="button" className="grow" style={{ textAlign: 'left' }} onClick={() => setForm(subForm(s))}>
-                    <div style={{ fontWeight: 800 }}>{s.name}</div>
+                    <div style={{ fontWeight: 600 }}>{s.name}</div>
                     <div className="row" style={{ gap: 6, marginTop: 4 }}>
                       <span className={`badge ${tone}`}>{d == null ? 'No date' : d < 0 ? `${-d}d overdue` : d === 0 ? 'Due today' : `Due in ${d}d`}</span>
-                      <span className="faint" style={{ fontSize: '0.75rem', fontWeight: 700 }}>{s.cycle}</span>
+                      <span className="faint" style={{ fontSize: '0.75rem', fontWeight: 500 }}>{s.cycle}</span>
                     </div>
                   </button>
-                  <div className="num" style={{ fontWeight: 800 }}>{money(s.amount, { currency: s.currency ?? 'INR' })}</div>
+                  <div className="num" style={{ fontWeight: 600 }}>{money(s.amount, { currency: s.currency ?? 'INR' })}</div>
                   <motion.button type="button" className="btn btn-sm btn-ghost" whileTap={{ scale: 0.92 }} onClick={() => markSubscriptionPaid(s, true)}>Paid</motion.button>
                 </div>
               );
